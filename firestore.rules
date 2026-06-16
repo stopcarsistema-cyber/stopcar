@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Agendamentos: qualquer visitante pode criar, só autenticados podem ler/editar
+    match /agendamentos/{id} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Ordens de serviço, clientes e estoque: só autenticados
+    match /ordens/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /clientes/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /estoque/{id} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
