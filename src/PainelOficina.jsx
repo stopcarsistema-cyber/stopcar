@@ -727,7 +727,17 @@ function mascaraCEP(v) {
   return v.replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
 }
 function mascaraPlaca(v) {
-  return v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
+  // Remove tudo que não é letra ou número, uppercase
+  v = v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
+  // Mercosul: 3 letras + 1 número + 1 letra + 2 números (ex: ABC1D23)
+  if (v.length >= 5 && /^[A-Z]{3}\d[A-Z]/.test(v)) {
+    return v; // sem hífen no Mercosul
+  }
+  // Padrão antigo: ABC-1234
+  if (v.length > 3 && /^[A-Z]{3}\d/.test(v)) {
+    return v.slice(0, 3) + "-" + v.slice(3);
+  }
+  return v;
 }
 
 function ModalCliente({ dados, onSalvar, onFechar }) {
@@ -758,9 +768,7 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     try {
       const res = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
       const data = await res.json();
-      if (!data.erro) {
-        setForm(f => ({ ...f, endereco: data.logradouro || "", bairro: data.bairro || "", cidade: data.localidade || "" }));
-      }
+      if (!data.erro) setForm(f => ({ ...f, endereco: data.logradouro || "", bairro: data.bairro || "", cidade: data.localidade || "" }));
     } catch {}
   }
 
@@ -773,76 +781,34 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
         </div>
         <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
 
-          {/* DADOS PESSOAIS */}
-          <div style={{ marginBottom: 6 }}>
-            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>👤 Dados Pessoais</p>
-            <div className="form-grid">
-              <label className="span2">Nome completo
-                <input value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="João da Silva" />
-              </label>
-              <label>Telefone / WhatsApp
-                <input value={form.telefone} onChange={e => set("telefone", mascaraTelefone(e.target.value))} placeholder="(11) 99999-9999" />
-              </label>
-              <label>E-mail
-                <input value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@exemplo.com" />
-              </label>
-              <label>CPF
-                <input value={form.cpf} onChange={e => set("cpf", mascaraCPF(e.target.value))} placeholder="000.000.000-00" />
-              </label>
-              <label>RG
-                <input value={form.rg} onChange={e => set("rg", mascaraRG(e.target.value))} placeholder="00.000.000-0" />
-              </label>
-              <label>Data de Nascimento
-                <input type="date" value={form.nascimento} onChange={e => set("nascimento", e.target.value)} />
-              </label>
-            </div>
+          <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:10 }}>👤 Dados Pessoais</p>
+          <div className="form-grid">
+            <label className="span2">Nome completo<input value={form.nome} onChange={e=>set("nome",e.target.value)} placeholder="João da Silva" /></label>
+            <label>Telefone / WhatsApp<input value={form.telefone} onChange={e=>set("telefone",mascaraTelefone(e.target.value))} placeholder="(11) 99999-9999" /></label>
+            <label>E-mail<input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="email@exemplo.com" /></label>
+            <label>CPF<input value={form.cpf} onChange={e=>set("cpf",mascaraCPF(e.target.value))} placeholder="000.000.000-00" /></label>
+            <label>RG<input value={form.rg} onChange={e=>set("rg",mascaraRG(e.target.value))} placeholder="00.000.000-0" /></label>
+            <label>Data de Nascimento<input type="date" value={form.nascimento} onChange={e=>set("nascimento",e.target.value)} /></label>
           </div>
 
-          {/* ENDEREÇO */}
-          <div style={{ marginBottom: 6, marginTop: 16 }}>
-            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>📍 Endereço</p>
-            <div className="form-grid">
-              <label>CEP
-                <input value={form.cep} onChange={e => { const v = mascaraCEP(e.target.value); set("cep", v); buscarCEP(v); }} placeholder="00000-000" />
-              </label>
-              <label className="span2">Endereço
-                <input value={form.endereco} onChange={e => set("endereco", e.target.value)} placeholder="Rua, número" />
-              </label>
-              <label>Bairro
-                <input value={form.bairro} onChange={e => set("bairro", e.target.value)} placeholder="Bairro" />
-              </label>
-              <label>Cidade
-                <input value={form.cidade} onChange={e => set("cidade", e.target.value)} placeholder="Cidade" />
-              </label>
-            </div>
+          <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>📍 Endereço</p>
+          <div className="form-grid">
+            <label>CEP<input value={form.cep} onChange={e=>{ const v=mascaraCEP(e.target.value); set("cep",v); buscarCEP(v); }} placeholder="00000-000" /></label>
+            <label className="span2">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value)} placeholder="Rua, número" /></label>
+            <label>Bairro<input value={form.bairro} onChange={e=>set("bairro",e.target.value)} placeholder="Bairro" /></label>
+            <label>Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value)} placeholder="Cidade" /></label>
           </div>
 
-          {/* VEÍCULO */}
-          <div style={{ marginBottom: 6, marginTop: 16 }}>
-            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>🚗 Veículo</p>
-            <div className="form-grid">
-              <label>Placa
-                <input value={form.placa} onChange={e => set("placa", mascaraPlaca(e.target.value))} placeholder="ABC1234" maxLength={7} />
-              </label>
-              <label>Modelo
-                <input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno" />
-              </label>
-              <label>Cor
-                <input value={form.cor} onChange={e => set("cor", e.target.value)} placeholder="Branco" />
-              </label>
-              <label>Ano
-                <input value={form.ano} onChange={e => set("ano", e.target.value)} placeholder="2020" maxLength={4} />
-              </label>
-            </div>
+          <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>🚗 Veículo</p>
+          <div className="form-grid">
+            <label>Placa<input value={form.placa} onChange={e=>set("placa",mascaraPlaca(e.target.value))} placeholder="ABC-1234 ou ABC1D23" maxLength={8} /></label>
+            <label>Modelo<input value={form.modelo} onChange={e=>set("modelo",e.target.value)} placeholder="Fiat Uno" /></label>
+            <label>Cor<input value={form.cor} onChange={e=>set("cor",e.target.value)} placeholder="Branco" /></label>
+            <label>Ano<input value={form.ano} onChange={e=>set("ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
           </div>
 
-          {/* OBS */}
-          <div style={{ marginTop: 16 }}>
-            <div className="form-grid">
-              <label className="span2">Observações
-                <textarea value={form.obs} onChange={e => set("obs", e.target.value)} rows={2} placeholder="Informações adicionais..." />
-              </label>
-            </div>
+          <div className="form-grid" style={{ marginTop: 16 }}>
+            <label className="span2">Observações<textarea value={form.obs} onChange={e=>set("obs",e.target.value)} rows={2} placeholder="Informações adicionais..." /></label>
           </div>
 
         </div>
