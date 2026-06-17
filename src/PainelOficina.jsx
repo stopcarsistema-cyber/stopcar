@@ -105,15 +105,15 @@ export default function PainelOficina({ usuario }) {
   useEffect(() => {
     const unsubs = [
       onSnapshot(query(collection(db, "ordens"), orderBy("criadoEm", "desc")), snap =>
-        setOrdens(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+        setOrdens(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "clientes"), orderBy("nome")), snap =>
-        setClientes(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+        setClientes(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "estoque"), orderBy("nome")), snap =>
-        setEstoque(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+        setEstoque(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "mecanicos"), orderBy("nome")), snap =>
-        setMecanicos(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+        setMecanicos(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "financeiro"), orderBy("criadoEm", "desc")), snap =>
-        setFinanceiro(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+        setFinanceiro(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
@@ -239,9 +239,10 @@ function AbaOS({ ordens, mecanicos }) {
   }
 
   async function excluirOS(id) {
+    if (!id) { alert("Erro: ID da OS não encontrado."); return; }
     if (!window.confirm("Tem certeza que deseja excluir esta OS? Essa ação não pode ser desfeita.")) return;
     try {
-      await deleteDoc(doc(db, "ordens", id));
+      await deleteDoc(doc(db, "ordens", String(id)));
     } catch (err) {
       alert("Erro ao excluir OS: " + err.message);
     }
