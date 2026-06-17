@@ -429,7 +429,7 @@ function AbaOS({ ordens, clientes, mecanicos }) {
                 <button className="btn-icon" title="WhatsApp — carro pronto" onClick={e => { e.stopPropagation(); whatsappPronto(os); }}>📱</button>
                 <button className="btn-icon" title="Imprimir OS" onClick={e => { e.stopPropagation(); imprimirOS(os); }}>🖨️</button>
                 <button className="btn-icon" onClick={e => { e.stopPropagation(); setModal(os); }}>✏️</button>
-                <button className="btn-icon" onClick={e => { e.stopPropagation(); excluirOS(os.id); }}>🗑️</button>
+                <button className="btn-icon" onClick={() => excluirOS(os.id)}>🗑️</button>
               </div>
             </div>
           ))}
