@@ -422,7 +422,7 @@ function AbaOS({ ordens, clientes, mecanicos }) {
                   {os.pagamento}
                 </span>
               )}
-              <div className="os-acoes" onClick={e => e.stopPropagation()}>
+              <div className="os-acoes">
                 <select value={os.status} onChange={e => { e.stopPropagation(); mudarStatus(os.id, e.target.value); }} className="select-status">
                   {Object.entries(STATUS_OS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
