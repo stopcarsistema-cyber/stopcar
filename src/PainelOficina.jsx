@@ -506,7 +506,12 @@ function AbaFinanceiro({ financeiro, ordens }) {
     setModal(false);
   }
   async function excluir(id) {
-    await deleteDoc(doc(db, "financeiro", id));
+    if (!window.confirm("Excluir este lançamento?")) return;
+    try {
+      await deleteDoc(doc(db, "financeiro", id));
+    } catch (err) {
+      alert("Erro ao excluir: " + err.message);
+    }
   }
 
   return (
@@ -605,7 +610,12 @@ function AbaClientes({ clientes, ordens }) {
     setModal(null);
   }
   async function excluir(id) {
-    await deleteDoc(doc(db, "clientes", id));
+    if (!window.confirm("Excluir este cliente?")) return;
+    try {
+      await deleteDoc(doc(db, "clientes", id));
+    } catch (err) {
+      alert("Erro ao excluir: " + err.message);
+    }
   }
 
   const ordensCliente = sel ? ordens.filter(o => o.placa===sel.placa||o.cliente===sel.nome) : [];
