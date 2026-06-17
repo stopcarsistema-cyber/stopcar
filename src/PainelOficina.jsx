@@ -168,47 +168,77 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
   ordens.forEach(o => { if (o.servico) contagemServicos[o.servico] = (contagemServicos[o.servico] || 0) + 1; });
   const topServicos = Object.entries(contagemServicos).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
+  const cards = [
+    { label: "OS Hoje",           valor: ordensHoje.length,                     icon: "📋", cor: "#e53e3e" },
+    { label: "Em Andamento",      valor: emAndamento.length,                    icon: "🔧", cor: "#ed8936" },
+    { label: "Aguardando",        valor: aguardando.length,                     icon: "⏳", cor: "#ecc94b" },
+    { label: "OS no Mês",         valor: ordensMes.length,                      icon: "📅", cor: "#48bb78" },
+    { label: "Faturamento Hoje",  valor: formatarMoeda(faturamentoHoje),        icon: "💰", cor: "#48bb78" },
+    { label: "Faturamento do Mês",valor: formatarMoeda(faturamentoMes),         icon: "📈", cor: "#38b2ac" },
+    { label: "Despesas do Mês",   valor: formatarMoeda(despesasMes),            icon: "📉", cor: "#e53e3e" },
+    { label: "Lucro do Mês",      valor: formatarMoeda(faturamentoMes - despesasMes), icon: "🏆", cor: (faturamentoMes - despesasMes) >= 0 ? "#48bb78" : "#e53e3e" },
+  ];
+
   return (
-    <div className="aba-content">
-      <h2>Dashboard</h2>
+    <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      {/* Título */}
+      <div style={{ display:"flex", alignItems:"baseline", gap:12, borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24 }}>
+        <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Dashboard</h2>
+        <span style={{ color:"#888", fontSize:13 }}>Visão geral da oficina</span>
+      </div>
+
+      {/* Alertas */}
       {(estoqueBaixo.length > 0 || osParadas.length > 0 || pendentePagamento.length > 0) && (
-        <div className="alertas-box">
-          {estoqueBaixo.length > 0 && <div className="alerta-item vermelho">⚠️ {estoqueBaixo.length} item(ns) com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</div>}
-          {osParadas.length > 0 && <div className="alerta-item amarelo">⏰ {osParadas.length} OS parada(s) ha mais de 3 dias</div>}
-          {pendentePagamento.length > 0 && <div className="alerta-item azul">💳 {pendentePagamento.length} OS com pagamento pendente</div>}
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
+          {estoqueBaixo.length > 0 && <div style={{ background:"#e53e3e22", border:"1px solid #e53e3e55", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13 }}>⚠️ {estoqueBaixo.length} item(ns) com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</div>}
+          {osParadas.length > 0 && <div style={{ background:"#ecc94b22", border:"1px solid #ecc94b55", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13 }}>⏰ {osParadas.length} OS parada(s) há mais de 3 dias</div>}
+          {pendentePagamento.length > 0 && <div style={{ background:"#4299e122", border:"1px solid #4299e155", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13 }}>💳 {pendentePagamento.length} OS com pagamento pendente</div>}
         </div>
       )}
-      <div className="dashboard-grid">
-        <div className="dash-card"><span className="dash-label">OS hoje</span><span className="dash-valor">{ordensHoje.length}</span></div>
-        <div className="dash-card"><span className="dash-label">Em andamento</span><span className="dash-valor azul">{emAndamento.length}</span></div>
-        <div className="dash-card"><span className="dash-label">Aguardando</span><span className="dash-valor amarelo">{aguardando.length}</span></div>
-        <div className="dash-card"><span className="dash-label">Faturamento hoje</span><span className="dash-valor verde">{formatarMoeda(faturamentoHoje)}</span></div>
-        <div className="dash-card"><span className="dash-label">Faturamento do mes</span><span className="dash-valor verde">{formatarMoeda(faturamentoMes)}</span></div>
-        <div className="dash-card"><span className="dash-label">Despesas do mes</span><span className="dash-valor vermelho">{formatarMoeda(despesasMes)}</span></div>
-        <div className="dash-card"><span className="dash-label">Lucro do mes</span><span className="dash-valor verde">{formatarMoeda(faturamentoMes - despesasMes)}</span></div>
-        <div className="dash-card"><span className="dash-label">OS no mes</span><span className="dash-valor">{ordensMes.length}</span></div>
+
+      {/* Grid de cards */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))", gap:14, marginBottom:24 }}>
+        {cards.map((c, i) => (
+          <div key={i} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden" }}>
+            <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
+            <div>
+              <div style={{ color:"#fff", fontSize:20, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
+              <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{c.label}</div>
+            </div>
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor, borderRadius:"0 0 12px 12px" }} />
+          </div>
+        ))}
       </div>
-      <div className="dashboard-cols">
-        <div className="dash-section">
-          <h3 className="secao-titulo">Top servicos</h3>
-          {topServicos.length === 0 ? <p style={{color:"var(--texto-sub)",fontSize:".85rem"}}>Nenhum servico ainda.</p> :
-            topServicos.map(([id, qtd]) => (
-              <div key={id} className="rank-item">
-                <span>{nomeServico(id)}</span>
-                <div className="rank-bar-wrap"><div className="rank-bar" style={{width:`${(qtd/topServicos[0][1])*100}%`}}></div></div>
-                <span className="rank-num">{qtd}</span>
+
+      {/* Colunas inferiores */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:16 }}>
+        {/* Top Serviços */}
+        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22 }}>
+          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🏅 Top Serviços</h3>
+          {topServicos.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum serviço ainda.</p>
+            : topServicos.map(([id, qtd], i) => (
+              <div key={id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
+                <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, width:26 }}>#{i+1}</span>
+                <span style={{ color:"#ddd", fontSize:13, flex:1 }}>{nomeServico(id)}</span>
+                <span style={{ background:"#e53e3e", color:"#fff", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20 }}>{qtd}x</span>
               </div>
             ))
           }
         </div>
-        <div className="dash-section">
-          <h3 className="secao-titulo">Na oficina agora</h3>
-          {emAndamento.length === 0 ? <p style={{color:"var(--texto-sub)",fontSize:".85rem"}}>Nenhum carro em andamento.</p> :
-            emAndamento.map(os => (
-              <div key={os.id} className="dash-os-item">
-                <span className="os-placa" style={{fontSize:".9rem"}}>{os.placa}</span>
-                <span style={{flex:1,fontSize:".85rem",color:"var(--texto-sub)"}}>{os.modelo}</span>
-                <span style={{fontSize:".8rem",color:"var(--azul)"}}>{os.mecanico || "—"}</span>
+
+        {/* Na oficina agora */}
+        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22 }}>
+          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🚗 Na Oficina Agora</h3>
+          {emAndamento.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum carro em andamento.</p>
+            : emAndamento.map(os => (
+              <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{os.modelo || "Veículo"}</div>
+                  <div style={{ color:"#888", fontSize:11, marginTop:2 }}>{os.placa || ""}{os.mecanico ? ` · ${os.mecanico}` : ""}</div>
+                </div>
+                <span style={{ background:"#ed893622", color:"#ed8936", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20, border:"1px solid #ed893655" }}>Em andamento</span>
               </div>
             ))
           }
