@@ -750,6 +750,7 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     nascimento: dados?.nascimento || "",
     cep: dados?.cep || "",
     endereco: dados?.endereco || "",
+    numero: dados?.numero || "",
     bairro: dados?.bairro || "",
     cidade: dados?.cidade || "",
     placa: dados?.placa || "",
@@ -794,7 +795,8 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
           <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>📍 Endereço</p>
           <div className="form-grid">
             <label>CEP<input value={form.cep} onChange={e=>{ const v=mascaraCEP(e.target.value); set("cep",v); buscarCEP(v); }} placeholder="00000-000" /></label>
-            <label className="span2">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value)} placeholder="Rua, número" /></label>
+            <label className="span2">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value)} placeholder="Rua, avenida..." /></label>
+            <label>Número<input value={form.numero} onChange={e=>set("numero",e.target.value)} placeholder="123" /></label>
             <label>Bairro<input value={form.bairro} onChange={e=>set("bairro",e.target.value)} placeholder="Bairro" /></label>
             <label>Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value)} placeholder="Cidade" /></label>
           </div>
