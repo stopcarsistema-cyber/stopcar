@@ -709,24 +709,147 @@ function AbaClientes({ clientes, ordens }) {
   );
 }
 
+function mascaraTelefone(v) {
+  v = v.replace(/\D/g, "").slice(0, 11);
+  if (v.length <= 10) return v.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  return v.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+}
+function mascaraCPF(v) {
+  v = v.replace(/\D/g, "").slice(0, 11);
+  return v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4").replace(/-$/, "");
+}
+function mascaraRG(v) {
+  v = v.replace(/\D/g, "").slice(0, 9);
+  return v.replace(/(\d{2})(\d{3})(\d{3})(\d{0,1})/, "$1.$2.$3-$4").replace(/-$/, "");
+}
+function mascaraCEP(v) {
+  v = v.replace(/\D/g, "").slice(0, 8);
+  return v.replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
+}
+function mascaraPlaca(v) {
+  return v.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
+}
+
 function ModalCliente({ dados, onSalvar, onFechar }) {
-  const [form, setForm] = useState({ nome:dados?.nome||"", telefone:dados?.telefone||"", email:dados?.email||"", placa:dados?.placa||"", modelo:dados?.modelo||"", obs:dados?.obs||"", id:dados?.id||null });
-  function set(k,v) { setForm(f=>({...f,[k]:v})); }
+  const [form, setForm] = useState({
+    nome: dados?.nome || "",
+    telefone: dados?.telefone || "",
+    email: dados?.email || "",
+    cpf: dados?.cpf || "",
+    rg: dados?.rg || "",
+    nascimento: dados?.nascimento || "",
+    cep: dados?.cep || "",
+    endereco: dados?.endereco || "",
+    bairro: dados?.bairro || "",
+    cidade: dados?.cidade || "",
+    placa: dados?.placa || "",
+    modelo: dados?.modelo || "",
+    cor: dados?.cor || "",
+    ano: dados?.ano || "",
+    obs: dados?.obs || "",
+    id: dados?.id || null,
+  });
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function buscarCEP(cep) {
+    const nums = cep.replace(/\D/g, "");
+    if (nums.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setForm(f => ({ ...f, endereco: data.logradouro || "", bairro: data.bairro || "", cidade: data.localidade || "" }));
+      }
+    } catch {}
+  }
+
   return (
     <div className="modal-overlay" onClick={onFechar}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h3>{dados?.id?"Editar cliente":"Novo cliente"}</h3><button className="modal-close" onClick={onFechar}>✕</button></div>
-        <div className="modal-body">
-          <div className="form-grid">
-            <label className="span2">Nome<input value={form.nome} onChange={e=>set("nome",e.target.value)} placeholder="Nome completo" /></label>
-            <label>Telefone<input value={form.telefone} onChange={e=>set("telefone",e.target.value)} placeholder="(11) 99999-9999" /></label>
-            <label>E-mail<input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="email@exemplo.com" /></label>
-            <label>Placa<input value={form.placa} onChange={e=>set("placa",e.target.value.toUpperCase())} placeholder="ABC-1234" /></label>
-            <label>Modelo<input value={form.modelo} onChange={e=>set("modelo",e.target.value)} placeholder="Fiat Uno 2018" /></label>
-            <label className="span2">Obs<textarea value={form.obs} onChange={e=>set("obs",e.target.value)} rows={2} /></label>
-          </div>
+      <div className="modal" style={{ maxWidth: 640, width: "95%" }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>{dados?.id ? "Editar cliente" : "Novo cliente"}</h3>
+          <button className="modal-close" onClick={onFechar}>✕</button>
         </div>
-        <div className="modal-footer"><button className="btn-secondary" onClick={onFechar}>Cancelar</button><button className="btn-primary" onClick={()=>onSalvar(form)}>Salvar</button></div>
+        <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+
+          {/* DADOS PESSOAIS */}
+          <div style={{ marginBottom: 6 }}>
+            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>👤 Dados Pessoais</p>
+            <div className="form-grid">
+              <label className="span2">Nome completo
+                <input value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="João da Silva" />
+              </label>
+              <label>Telefone / WhatsApp
+                <input value={form.telefone} onChange={e => set("telefone", mascaraTelefone(e.target.value))} placeholder="(11) 99999-9999" />
+              </label>
+              <label>E-mail
+                <input value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@exemplo.com" />
+              </label>
+              <label>CPF
+                <input value={form.cpf} onChange={e => set("cpf", mascaraCPF(e.target.value))} placeholder="000.000.000-00" />
+              </label>
+              <label>RG
+                <input value={form.rg} onChange={e => set("rg", mascaraRG(e.target.value))} placeholder="00.000.000-0" />
+              </label>
+              <label>Data de Nascimento
+                <input type="date" value={form.nascimento} onChange={e => set("nascimento", e.target.value)} />
+              </label>
+            </div>
+          </div>
+
+          {/* ENDEREÇO */}
+          <div style={{ marginBottom: 6, marginTop: 16 }}>
+            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>📍 Endereço</p>
+            <div className="form-grid">
+              <label>CEP
+                <input value={form.cep} onChange={e => { const v = mascaraCEP(e.target.value); set("cep", v); buscarCEP(v); }} placeholder="00000-000" />
+              </label>
+              <label className="span2">Endereço
+                <input value={form.endereco} onChange={e => set("endereco", e.target.value)} placeholder="Rua, número" />
+              </label>
+              <label>Bairro
+                <input value={form.bairro} onChange={e => set("bairro", e.target.value)} placeholder="Bairro" />
+              </label>
+              <label>Cidade
+                <input value={form.cidade} onChange={e => set("cidade", e.target.value)} placeholder="Cidade" />
+              </label>
+            </div>
+          </div>
+
+          {/* VEÍCULO */}
+          <div style={{ marginBottom: 6, marginTop: 16 }}>
+            <p style={{ color: "#e53e3e", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>🚗 Veículo</p>
+            <div className="form-grid">
+              <label>Placa
+                <input value={form.placa} onChange={e => set("placa", mascaraPlaca(e.target.value))} placeholder="ABC1234" maxLength={7} />
+              </label>
+              <label>Modelo
+                <input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno" />
+              </label>
+              <label>Cor
+                <input value={form.cor} onChange={e => set("cor", e.target.value)} placeholder="Branco" />
+              </label>
+              <label>Ano
+                <input value={form.ano} onChange={e => set("ano", e.target.value)} placeholder="2020" maxLength={4} />
+              </label>
+            </div>
+          </div>
+
+          {/* OBS */}
+          <div style={{ marginTop: 16 }}>
+            <div className="form-grid">
+              <label className="span2">Observações
+                <textarea value={form.obs} onChange={e => set("obs", e.target.value)} rows={2} placeholder="Informações adicionais..." />
+              </label>
+            </div>
+          </div>
+
+        </div>
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onFechar}>Cancelar</button>
+          <button className="btn-primary" onClick={() => onSalvar(form)}>Salvar</button>
+        </div>
       </div>
     </div>
   );
