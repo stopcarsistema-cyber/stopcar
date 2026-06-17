@@ -351,12 +351,10 @@ function AbaOS({ ordens, clientes, mecanicos }) {
   }
 
   async function excluirOS(id) {
-    const ok = window.confirm("Excluir esta OS?");
-    if (!ok) return;
     try {
       await deleteDoc(doc(db, "ordens", id));
     } catch(e) {
-      alert("Erro ao excluir.");
+      console.error("Erro ao excluir:", e);
     }
   }
 
