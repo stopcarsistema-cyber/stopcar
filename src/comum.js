@@ -83,13 +83,9 @@ export function enviarWhatsApp(telefone, mensagem) {
 }
 
 // Mantidos para compatibilidade
+
+// Mantidos para compatibilidade com PortalCliente
 export const HORARIOS = [
   "08:00", "09:00", "10:00", "11:00",
   "13:00", "14:00", "15:00", "16:00", "17:00",
 ];
-
-export function formatarPlaca(raw) {
-  const v = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (v.length <= 3) return v;
-  return v.slice(0, 3) + "-" + v.slice(3, 7);
-}
