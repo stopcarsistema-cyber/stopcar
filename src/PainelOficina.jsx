@@ -239,7 +239,12 @@ function AbaOS({ ordens, mecanicos }) {
   }
 
   async function excluirOS(id) {
-    await deleteDoc(doc(db, "ordens", id));
+    if (!window.confirm("Tem certeza que deseja excluir esta OS? Essa ação não pode ser desfeita.")) return;
+    try {
+      await deleteDoc(doc(db, "ordens", id));
+    } catch (err) {
+      alert("Erro ao excluir OS: " + err.message);
+    }
   }
 
   async function mudarStatus(id, status) {
@@ -694,7 +699,12 @@ function AbaEquipe({ mecanicos, ordens }) {
     setModal(null);
   }
   async function excluir(id) {
-    await deleteDoc(doc(db, "mecanicos", id));
+    if (!window.confirm("Excluir este mecânico?")) return;
+    try {
+      await deleteDoc(doc(db, "mecanicos", id));
+    } catch (err) {
+      alert("Erro ao excluir: " + err.message);
+    }
   }
   return (
     <div className="aba-content">
@@ -758,7 +768,12 @@ function AbaEstoque({ estoque }) {
     setModal(null);
   }
   async function excluir(id) {
-    await deleteDoc(doc(db, "estoque", id));
+    if (!window.confirm("Excluir esta peça do estoque?")) return;
+    try {
+      await deleteDoc(doc(db, "estoque", id));
+    } catch (err) {
+      alert("Erro ao excluir: " + err.message);
+    }
   }
   return (
     <div className="aba-content">
