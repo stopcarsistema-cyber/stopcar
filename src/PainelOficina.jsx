@@ -545,49 +545,82 @@ function AbaFinanceiro({ financeiro, ordens }) {
     }
   }
 
+  const saldo = receitas + totalOS - despesas;
+  const cards = [
+    { label: "Receitas", valor: formatarMoeda(receitas), icon: "📈", cor: "#48bb78" },
+    { label: "OS Pagas no Mês", valor: formatarMoeda(totalOS), icon: "✅", cor: "#38b2ac" },
+    { label: "Despesas", valor: formatarMoeda(despesas), icon: "📉", cor: "#e53e3e" },
+    { label: "Saldo do Mês", valor: formatarMoeda(saldo), icon: saldo >= 0 ? "🏆" : "⚠️", cor: saldo >= 0 ? "#48bb78" : "#e53e3e" },
+  ];
+
   return (
-    <div className="aba-content">
-      <div className="aba-header-row">
-        <h2>Financeiro</h2>
-        <div style={{display:"flex",gap:".75rem",alignItems:"center"}}>
-          <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)} style={{padding:".45rem .75rem",borderRadius:"var(--radius)",background:"var(--cinza-escuro)",border:"1px solid var(--borda)",color:"var(--texto)"}} />
-          <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lancamento</button>
+    <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24, flexWrap:"wrap", gap:12 }}>
+        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
+          <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Financeiro</h2>
+          <span style={{ color:"#888", fontSize:13 }}>Controle de receitas e despesas</span>
+        </div>
+        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
+            style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
+          <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
-      <div className="fin-resumo">
-        <div className="fin-card receita"><span>Receitas</span><strong>{formatarMoeda(receitas)}</strong></div>
-        <div className="fin-card os-pagas"><span>OS pagas no mes</span><strong>{formatarMoeda(totalOS)}</strong></div>
-        <div className="fin-card despesa"><span>Despesas</span><strong>{formatarMoeda(despesas)}</strong></div>
-        <div className={"fin-card " + (receitas+totalOS-despesas>=0?"positivo":"negativo")}><span>Saldo</span><strong>{formatarMoeda(receitas+totalOS-despesas)}</strong></div>
+
+      {/* Cards resumo */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
+        {cards.map((c, i) => (
+          <div key={i} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden" }}>
+            <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
+            <div>
+              <div style={{ color:"#fff", fontSize:19, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
+              <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{c.label}</div>
+            </div>
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor, borderRadius:"0 0 12px 12px" }} />
+          </div>
+        ))}
       </div>
+
+      {/* Contas a receber */}
       {pendentes.length > 0 && (
-        <div className="fin-pendentes">
-          <h3 className="secao-titulo">Contas a receber</h3>
+        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20, marginBottom:20 }}>
+          <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 14px 0" }}>💳 Contas a Receber</h3>
           {pendentes.map(os => (
-            <div key={os.id} className="fin-pendente-item">
-              <span className="os-placa" style={{fontSize:".85rem"}}>{os.placa}</span>
-              <span style={{flex:1,fontSize:".85rem"}}>{os.cliente}</span>
-              <span style={{fontSize:".8rem",color:"var(--texto-sub)"}}>{os.pagamento}</span>
-              <span className="os-valor" style={{fontSize:".9rem"}}>{formatarMoeda(os.valor)}</span>
+            <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
+              <span style={{ background:"#e53e3e22", color:"#fc8181", border:"1px solid #e53e3e44", borderRadius:6, padding:"2px 8px", fontSize:12, fontWeight:700 }}>{os.placa}</span>
+              <span style={{ flex:1, color:"#ddd", fontSize:13 }}>{os.cliente}</span>
+              <span style={{ background: os.pagamento==="Parcial" ? "#ecc94b22" : "#e53e3e22", color: os.pagamento==="Parcial" ? "#f6e05e" : "#fc8181", border:`1px solid ${os.pagamento==="Parcial"?"#ecc94b44":"#e53e3e44"}`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:600 }}>{os.pagamento}</span>
+              <span style={{ color:"#48bb78", fontWeight:700, fontSize:14 }}>{formatarMoeda(os.valor)}</span>
             </div>
           ))}
         </div>
       )}
-      <h3 className="secao-titulo" style={{marginTop:"1.5rem"}}>Lancamentos</h3>
-      {lancamentos.length === 0 ? <div className="vazio"><p>Nenhum lancamento neste mes.</p></div> : (
-        <div className="fin-lista">
-          {lancamentos.map(f => (
-            <div key={f.id} className={"fin-item " + f.tipo}>
-              <div style={{display:"flex",flexDirection:"column",gap:".2rem",flex:1}}>
-                <strong style={{fontSize:".9rem"}}>{f.descricao}</strong>
-                <span style={{fontSize:".75rem",color:"var(--texto-sub)"}}>{f.categoria} · {formatarData(f.criadoEm)}</span>
+
+      {/* Lançamentos */}
+      <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 }}>
+        <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 14px 0" }}>📋 Lançamentos do Mês</h3>
+        {lancamentos.length === 0
+          ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>Nenhum lançamento neste mês.</p>
+          : lancamentos.map(f => (
+            <div key={f.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
+              <div style={{ width:36, height:36, borderRadius:8, background: f.tipo==="receita" ? "#48bb7820" : "#e53e3e20", color: f.tipo==="receita" ? "#48bb78" : "#fc8181", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>
+                {f.tipo==="receita" ? "⬆️" : "⬇️"}
               </div>
-              <span className={"fin-valor " + f.tipo}>{f.tipo==="receita"?"+":"-"}{formatarMoeda(f.valor)}</span>
-              <button className="btn-icon" onClick={() => excluir(f.id)}>🗑️</button>
+              <div style={{ flex:1 }}>
+                <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{f.descricao}</div>
+                <div style={{ color:"#666", fontSize:11, marginTop:2 }}>{f.categoria} · {formatarData(f.criadoEm)}</div>
+              </div>
+              <span style={{ color: f.tipo==="receita" ? "#48bb78" : "#fc8181", fontWeight:700, fontSize:15 }}>
+                {f.tipo==="receita" ? "+" : "-"}{formatarMoeda(f.valor)}
+              </span>
+              <button className="btn-icon" onClick={() => excluir(f.id)} style={{ marginLeft:4 }}>🗑️</button>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        }
+      </div>
+
       {modal && <ModalFinanceiro onSalvar={salvar} onFechar={() => setModal(false)} />}
     </div>
   );
