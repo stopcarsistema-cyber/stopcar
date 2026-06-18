@@ -96,12 +96,6 @@ function imprimirOS(os) {
 
 export default function PainelOficina({ usuario }) {
   const [aba, setAba] = useState(0);
-  const [tema, setTema] = useState(() => localStorage.getItem("stopcar-tema") || "escuro");
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-tema", tema);
-    localStorage.setItem("stopcar-tema", tema);
-  }, [tema]);
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
@@ -138,29 +132,11 @@ export default function PainelOficina({ usuario }) {
             <button key={i} className={"nav-tab" + (aba === i ? " ativo" : "")} onClick={() => setAba(i)}>{a}</button>
           ))}
         </nav>
-        <button
-          onClick={() => setTema(t => t === "escuro" ? "claro" : "escuro")}
-          title={tema === "escuro" ? "Ativar tema claro" : "Ativar tema escuro"}
-          style={{
-            background: tema === "claro" ? "#111" : "#fff",
-            border: "1px solid var(--borda)",
-            borderRadius: 20,
-            padding: "4px 12px",
-            cursor: "pointer",
-            fontSize: 16,
-            display: "flex", alignItems: "center", gap: 6,
-            color: tema === "claro" ? "#fff" : "#111",
-            fontWeight: 600, fontSize: 12,
-            transition: "all 0.3s"
-          }}
-        >
-          {tema === "escuro" ? "☀️ Claro" : "🌙 Escuro"}
-        </button>
         <button className="btn-sair" onClick={() => signOut(auth)}>Sair</button>
       </header>
       <main className="painel-main">
         {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} setAba={setAba} />}
-        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} estoque={estoque} />}
+        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} />}
         {aba === 2 && <AbaHistorico ordens={ordens} />}
         {aba === 3 && <AbaFinanceiro financeiro={financeiro} ordens={ordens} />}
         {aba === 4 && <AbaClientes clientes={clientes} ordens={ordens} />}
@@ -214,7 +190,7 @@ function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
       {/* Alertas */}
       {(estoqueBaixo.length > 0 || osParadas.length > 0 || pendentePagamento.length > 0) && (
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
-          {estoqueBaixo.length > 0 && <div onClick={() => setAba(6)} style={{ background:"#e53e3e22", border:"1px solid #e53e3e55", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}><span>⚠️ <strong>{estoqueBaixo.length} item(ns)</strong> com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</span><span style={{ fontSize:11, opacity:0.7 }}>Ver estoque →</span></div>}
+          {estoqueBaixo.length > 0 && <div style={{ background:"#e53e3e22", border:"1px solid #e53e3e55", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13 }}>⚠️ {estoqueBaixo.length} item(ns) com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</div>}
           {osParadas.length > 0 && <div style={{ background:"#ecc94b22", border:"1px solid #ecc94b55", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13 }}>⏰ {osParadas.length} OS parada(s) há mais de 3 dias</div>}
           {pendentePagamento.length > 0 && <div style={{ background:"#4299e122", border:"1px solid #4299e155", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13 }}>💳 {pendentePagamento.length} OS com pagamento pendente</div>}
         </div>
@@ -274,7 +250,7 @@ function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
   );
 }
 
-function AbaOS({ ordens, mecanicos, clientes, estoque = [] }) {
+function AbaOS({ ordens, mecanicos, clientes }) {
   const [modal, setModal] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -286,14 +262,6 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [] }) {
   const contagem = Object.keys(STATUS_OS).reduce((acc, k) => { acc[k] = ordens.filter(o => o.status === k).length; return acc; }, {});
 
   async function salvarOS(dados) {
-    // Desconta estoque usado
-    if (dados.estoqueSelecionado?.length > 0) {
-      for (const item of dados.estoqueSelecionado) {
-        const ref = doc(db, "estoque", item.id);
-        const novaQtd = Math.max(0, (item.quantidadeAtual || 0) - item.qtdUsada);
-        await updateDoc(ref, { quantidade: novaQtd });
-      }
-    }
     if (dados.id) {
       await updateDoc(doc(db, "ordens", dados.id), { ...dados, atualizadoEm: serverTimestamp() });
     } else {
@@ -371,7 +339,15 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [] }) {
                 <select value={os.status} onChange={e => mudarStatus(os.id, e.target.value)} className="select-status">
                   {Object.entries(STATUS_OS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
-                <button className="btn-icon" title="WhatsApp" onClick={() => whatsappPronto(os)}><svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>
+                <button className="btn-icon" title="Enviar Orçamento via WhatsApp"
+                  onClick={() => whatsappOrcamento(os)}
+                  style={{ background:"#25D36622", borderRadius:6, padding:"3px 8px", display:"flex", alignItems:"center", gap:4, fontSize:11, fontWeight:600, color:"#25D366", border:"1px solid #25D36633" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  Orçamento
+                </button>
+                <button className="btn-icon" title="Avisar que está pronto" onClick={() => whatsappPronto(os)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                </button>
                 <button className="btn-icon" title="Imprimir" onClick={() => imprimirOS(os)}>🖨️</button>
                 <button className="btn-icon" title="Editar" onClick={() => setModal(os)}>✏️</button>
                 <button className="btn-icon" title="Excluir" onClick={() => excluirOS(os.id)}>🗑️</button>
@@ -380,12 +356,12 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [] }) {
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} estoque={estoque} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFechar }) {
+function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
@@ -397,29 +373,8 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFe
     checklist: dados?.checklist || {}, id: dados?.id || null,
   });
   const [abaModal, setAbaModal] = useState("dados");
-  const [itensOS, setItensOS] = useState(dados?.estoqueSelecionado || []);
-  const [buscaEstoque, setBuscaEstoque] = useState("");
-
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
   function setCheck(k, v) { setForm(f => ({ ...f, checklist: { ...f.checklist, [k]: v } })); }
-
-  function adicionarItem(produto) {
-    setItensOS(prev => {
-      const existe = prev.find(i => i.id === produto.id);
-      if (existe) return prev.map(i => i.id === produto.id ? { ...i, qtdUsada: i.qtdUsada + 1 } : i);
-      return [...prev, { id: produto.id, nome: produto.nome, quantidadeAtual: produto.quantidade, qtdUsada: 1, unidade: produto.unidade || "un" }];
-    });
-  }
-
-  function removerItem(id) { setItensOS(prev => prev.filter(i => i.id !== id)); }
-
-  function alterarQtd(id, qtd) {
-    setItensOS(prev => prev.map(i => i.id === id ? { ...i, qtdUsada: Math.max(1, Number(qtd)) } : i));
-  }
-
-  const estoqueFiltrado = buscaEstoque.length >= 1
-    ? estoque.filter(p => p.nome?.toLowerCase().includes(buscaEstoque.toLowerCase()))
-    : estoque;
   const [buscaCliente, setBuscaCliente] = useState(form.cliente || "");
   const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
   const sugestoes = buscaCliente.length >= 2
@@ -441,19 +396,10 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFe
           <h3>{dados ? `Editar OS #${dados.numero || "---"}` : "Nova OS"}</h3>
           <button className="modal-close" onClick={onFechar}>✕</button>
         </div>
-        <div style={{ display:"flex", gap:4, padding:"0 20px", borderBottom:"1px solid #2a2a2a", marginBottom:0 }}>
-          {[
-            { key:"dados", label:"📋 Dados" },
-            { key:"estoque", label:`📦 Peças${itensOS.length > 0 ? ` (${itensOS.length})` : ""}` },
-            { key:"checklist", label:"✅ Checklist" },
-          ].map(t => (
-            <button key={t.key} onClick={() => setAbaModal(t.key)} style={{
-              padding:"10px 16px", fontSize:13, fontWeight:600, cursor:"pointer", border:"none",
-              borderBottom: abaModal === t.key ? "2px solid #e53e3e" : "2px solid transparent",
-              background:"transparent", color: abaModal === t.key ? "#fff" : "#666",
-              marginBottom:-1, transition:"color 0.15s"
-            }}>
-              {t.label}
+        <div className="modal-tabs">
+          {["dados", "checklist"].map(t => (
+            <button key={t} className={"modal-tab" + (abaModal === t ? " ativo" : "")} onClick={() => setAbaModal(t)}>
+              {t === "dados" ? "Dados" : "Checklist"}
             </button>
           ))}
         </div>
@@ -520,58 +466,6 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFe
               <label className="span2">Pecas utilizadas<textarea value={form.pecas} onChange={e => set("pecas", e.target.value)} rows={2} placeholder="Ex: Filtro de oleo, vela de ignicao..." /></label>
             </div>
           )}
-          {abaModal === "estoque" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-              {/* Busca produto */}
-              <div>
-                <p style={{ color:"#888", fontSize:12, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>🔍 Buscar produto no estoque</p>
-                <input value={buscaEstoque} onChange={e => setBuscaEstoque(e.target.value)} placeholder="Digite o nome do produto..." style={{ width:"100%", marginBottom:8 }} />
-                <div style={{ maxHeight:200, overflowY:"auto", border:"1px solid #2a2a2a", borderRadius:8 }}>
-                  {estoqueFiltrado.length === 0
-                    ? <p style={{ color:"#555", fontSize:13, padding:12, textAlign:"center" }}>Nenhum produto encontrado.</p>
-                    : estoqueFiltrado.map(p => (
-                      <div key={p.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderBottom:"1px solid #1a1a1a", cursor:"pointer", background:"#111" }}
-                        onMouseEnter={e => e.currentTarget.style.background="#1e1e1e"}
-                        onMouseLeave={e => e.currentTarget.style.background="#111"}
-                        onClick={() => adicionarItem(p)}>
-                        <div style={{ flex:1 }}>
-                          <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{p.nome}</div>
-                          <div style={{ color:"#666", fontSize:11 }}>Estoque: {p.quantidade} {p.unidade || "un"}</div>
-                        </div>
-                        <span style={{ background:"#e53e3e22", color:"#fc8181", border:"1px solid #e53e3e44", borderRadius:6, padding:"2px 10px", fontSize:12 }}>+ Adicionar</span>
-                      </div>
-                    ))
-                  }
-                </div>
-              </div>
-
-              {/* Itens selecionados */}
-              {itensOS.length > 0 && (
-                <div>
-                  <p style={{ color:"#888", fontSize:12, marginBottom:8, textTransform:"uppercase", letterSpacing:"0.05em" }}>📦 Peças desta OS</p>
-                  {itensOS.map(item => (
-                    <div key={item.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-                      <div style={{ flex:1 }}>
-                        <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{item.nome}</div>
-                        <div style={{ color:"#666", fontSize:11 }}>Disponível: {item.quantidadeAtual} {item.unidade}</div>
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                        <button onClick={() => alterarQtd(item.id, item.qtdUsada - 1)} style={{ width:28, height:28, borderRadius:6, background:"#2a2a2a", border:"1px solid #333", color:"#fff", cursor:"pointer", fontSize:16 }}>−</button>
-                        <span style={{ color:"#fff", fontWeight:700, minWidth:24, textAlign:"center" }}>{item.qtdUsada}</span>
-                        <button onClick={() => alterarQtd(item.id, item.qtdUsada + 1)} style={{ width:28, height:28, borderRadius:6, background:"#2a2a2a", border:"1px solid #333", color:"#fff", cursor:"pointer", fontSize:16 }}>+</button>
-                        <span style={{ color:"#888", fontSize:12, minWidth:20 }}>{item.unidade}</span>
-                      </div>
-                      <button onClick={() => removerItem(item.id)} style={{ background:"#e53e3e22", color:"#fc8181", border:"none", borderRadius:6, width:28, height:28, cursor:"pointer", fontSize:14 }}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {itensOS.length === 0 && (
-                <p style={{ color:"#555", fontSize:13, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>Nenhuma peça adicionada. Busque e clique em + Adicionar.</p>
-              )}
-            </div>
-          )}
-
           {abaModal === "checklist" && (
             <div className="checklist-grid">
               {CHECKLIST_ITENS.map(item => (
@@ -589,7 +483,7 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFe
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onFechar}>Cancelar</button>
-          <button className="btn-primary" onClick={() => onSalvar({ ...form, estoqueSelecionado: itensOS })}>Salvar OS</button>
+          <button className="btn-primary" onClick={() => onSalvar(form)}>Salvar OS</button>
         </div>
       </div>
     </div>
@@ -732,13 +626,7 @@ function AbaFinanceiro({ financeiro, ordens }) {
 
           {mesFechado
             ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
-            : <button onClick={fecharMes}
-              onMouseEnter={e => { e.currentTarget.style.background="#ecc94b"; e.currentTarget.style.color="#111"; }}
-              onMouseLeave={e => { e.currentTarget.style.background="linear-gradient(135deg,#b7791f,#ecc94b)"; e.currentTarget.style.color="#111"; }}
-              style={{ background:"linear-gradient(135deg,#b7791f,#ecc94b)", color:"#111", border:"none", borderRadius:10, padding:"9px 18px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, boxShadow:"0 2px 12px #ecc94b33", letterSpacing:"0.03em" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Fechar Mês
-            </button>
+            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b55", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
           }
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
@@ -1101,74 +989,34 @@ function AbaEquipe({ mecanicos, ordens }) {
       alert("Erro ao excluir: " + err.message);
     }
   }
-  const hoje = new Date();
-
   return (
-    <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto", fontFamily:"'Inter','Segoe UI',sans-serif" }}>
-
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24 }}>
-        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
-          <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Equipe</h2>
-          <span style={{ color:"#888", fontSize:13 }}>Mecânicos cadastrados</span>
-        </div>
-        <button className="btn-primary btn-sm" onClick={() => setModal({})}>+ Adicionar mecânico</button>
-      </div>
-
-      {mecanicos.length === 0
-        ? <p style={{ color:"#555", fontSize:14, fontStyle:"italic" }}>Nenhum mecânico cadastrado.</p>
-        : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:16 }}>
-            {mecanicos.map(m => {
-              const osMec = ordens.filter(o => o.mecanico === m.nome);
-              const osMes = osMec.filter(o => { const d = o.criadoEm?.toDate ? o.criadoEm.toDate() : new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
-              const faturado = osMec.reduce((a,o) => a+(Number(o.valor)||0), 0);
-              const iniciais = m.nome.split(" ").map(p=>p[0]).join("").toUpperCase().slice(0,2);
-              const cores = ["#e53e3e","#ed8936","#48bb78","#38b2ac","#667eea","#f687b3"];
-              const cor = cores[m.nome.charCodeAt(0) % cores.length];
-
-              return (
-                <div key={m.id} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:14, padding:22, display:"flex", flexDirection:"column", gap:16, position:"relative", overflow:"hidden" }}>
-                  <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:cor }} />
-
-                  {/* Avatar + info */}
-                  <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                    <div style={{ width:52, height:52, borderRadius:12, background:cor+"22", color:cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, flexShrink:0 }}>{iniciais}</div>
-                    <div>
-                      <div style={{ color:"#fff", fontSize:16, fontWeight:700 }}>{m.nome}</div>
-                      {m.especialidade && <div style={{ color:"#888", fontSize:12, marginTop:2 }}>🔧 {m.especialidade}</div>}
-                      {m.telefone && <div style={{ color:"#888", fontSize:12, marginTop:1 }}>📱 {m.telefone}</div>}
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
-                      <div style={{ color:"#fff", fontSize:18, fontWeight:700 }}>{osMec.length}</div>
-                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>OS Total</div>
-                    </div>
-                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
-                      <div style={{ color:"#38b2ac", fontSize:18, fontWeight:700 }}>{osMes.length}</div>
-                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>Este Mês</div>
-                    </div>
-                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
-                      <div style={{ color:"#48bb78", fontSize:14, fontWeight:700 }}>{formatarMoeda(faturado)}</div>
-                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>Faturado</div>
-                    </div>
-                  </div>
-
-                  {/* Ações */}
-                  <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
-                    <button className="btn-icon" title="Editar" onClick={() => setModal(m)}>✏️</button>
-                    <button className="btn-icon" title="Excluir" onClick={() => excluir(m.id)}>🗑️</button>
-                  </div>
+    <div className="aba-content">
+      <div className="aba-header-row"><h2>Equipe</h2><button className="btn-primary btn-sm" onClick={()=>setModal({})}>+ Adicionar mecanico</button></div>
+      {mecanicos.length===0 ? <div className="vazio"><p>Nenhum mecanico cadastrado.</p></div> : (
+        <div className="equipe-grid">
+          {mecanicos.map(m => {
+            const osMec = ordens.filter(o => o.mecanico===m.nome);
+            const hoje = new Date();
+            const totalMes = osMec.filter(o => { const d=o.criadoEm?.toDate?o.criadoEm.toDate():new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
+            return (
+              <div key={m.id} className="mecanico-card">
+                <div className="mecanico-avatar">{m.nome.charAt(0).toUpperCase()}</div>
+                <div className="mecanico-info"><strong>{m.nome}</strong>{m.especialidade&&<span>{m.especialidade}</span>}{m.telefone&&<span>{m.telefone}</span>}</div>
+                <div className="mecanico-stats">
+                  <div><span className="stat-num">{osMec.length}</span><span>OS total</span></div>
+                  <div><span className="stat-num azul">{totalMes.length}</span><span>este mes</span></div>
+                  <div><span className="stat-num verde">{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span><span>faturado</span></div>
                 </div>
-              );
-            })}
-          </div>
-        )
-      }
-      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={() => setModal(null)} />}
+                <div className="tabela-acoes" style={{marginTop:".5rem"}}>
+                  <button className="btn-icon" onClick={()=>setModal(m)}>✏️</button>
+                  <button className="btn-icon" onClick={()=>excluir(m.id)}>🗑️</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={()=>setModal(null)} />}
     </div>
   );
 }
