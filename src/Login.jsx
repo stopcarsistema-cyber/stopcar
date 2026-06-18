@@ -37,7 +37,7 @@ export default function Login({ onVoltar }) {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="equipe@stopcar.com"
+              placeholder="exemplo@exemplo.com"
               required
               autoFocus
             />
