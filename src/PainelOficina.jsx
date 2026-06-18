@@ -289,6 +289,39 @@ function AbaOS({ ordens, mecanicos, clientes }) {
     enviarWhatsApp(os.telefone, msg);
   }
 
+  function whatsappOrcamento(os) {
+    if (!os.telefone) { alert("Telefone do cliente nao informado!"); return; }
+    const pecasLista = os.estoqueSelecionado && os.estoqueSelecionado.length > 0
+      ? os.estoqueSelecionado.map(function(i) { return "  - " + i.qtdUsada + "x " + i.nome; }).join("\n")
+      : os.pecas ? "  - " + os.pecas : "  - A definir";
+
+    const msg = [
+      "ORCAMENTO - STOPCAR OFICINA MECANICA",
+      "---",
+      "Ola, " + (os.cliente || "Cliente") + "!",
+      "Segue o orcamento para o seu veiculo:",
+      "",
+      "Veiculo: " + (os.modelo || "-") + " | Placa: " + (os.placa || "-"),
+      os.km ? "KM entrada: " + os.km : "",
+      "",
+      "Servico: " + nomeServico(os.servico),
+      os.obs ? "Descricao: " + os.obs : "",
+      "",
+      "Pecas e Materiais:",
+      pecasLista,
+      "",
+      "Valor Total: " + formatarMoeda(os.valor),
+      "",
+      "---",
+      "Para aprovar ou tirar duvidas, responda esta mensagem.",
+      "STOPCAR Oficina Mecanica"
+    ].filter(function(l) { return l !== null && l !== undefined; }).join("\n");
+
+    var num = os.telefone.replace(/[^0-9]/g, "");
+    var url = "https://wa.me/55" + num + "?text=" + encodeURIComponent(msg);
+    window.open(url, "_blank");
+  }
+
   return (
     <div className="aba-content">
       <div className="kanban-summary">
