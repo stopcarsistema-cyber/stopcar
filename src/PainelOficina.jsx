@@ -566,11 +566,12 @@ function AbaFinanceiro({ financeiro, ordens }) {
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
 
   const [fechamentos, setFechamentos] = useState([]);
+  const [erroFechamento, setErroFechamento] = useState(false);
 
   useEffect(() => {
-    getDocs(collection(db, "fechamentos")).then(snap => {
-      setFechamentos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }).catch(() => {});
+    getDocs(collection(db, "fechamentos"))
+      .then(snap => setFechamentos(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => setErroFechamento(true));
   }, []);
 
   const mesFechado = fechamentos.find(f => f.mes === filtroMes);
@@ -629,10 +630,10 @@ function AbaFinanceiro({ financeiro, ordens }) {
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
-          {mesFechado
+          {!erroFechamento && (mesFechado
             ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
             : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b44", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
-          }
+          )}
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
