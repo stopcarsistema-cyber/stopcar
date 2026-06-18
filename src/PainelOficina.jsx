@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  collection, query, orderBy, onSnapshot,
+  collection, query, orderBy, onSnapshot, getDocs,
   addDoc, updateDoc, doc, deleteDoc, serverTimestamp,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -565,16 +565,6 @@ function AbaFinanceiro({ financeiro, ordens }) {
   const totalOS = osPagas.reduce((a,o) => a+(Number(o.valor)||0), 0);
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
 
-  const [fechamentos, setFechamentos] = useState([]);
-  const [erroFechamento, setErroFechamento] = useState(false);
-
-  useEffect(() => {
-    getDocs(collection(db, "fechamentos"))
-      .then(snap => setFechamentos(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => setErroFechamento(true));
-  }, []);
-
-  const mesFechado = fechamentos.find(f => f.mes === filtroMes);
   const saldo = receitas + totalOS - despesas;
 
   async function salvar(dados) {
@@ -587,28 +577,6 @@ function AbaFinanceiro({ financeiro, ordens }) {
       await deleteDoc(doc(db, "financeiro", id));
     } catch (err) {
       alert("Erro ao excluir: " + err.message);
-    }
-  }
-
-  async function fecharMes() {
-    if (!window.confirm(`Confirmar fechamento de ${filtroMes.replace("-", "/")}? Esta ação registra o resultado do mês.`)) return;
-    try {
-      const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
-      await addDoc(collection(db, "fechamentos"), {
-        mes: filtroMes,
-        nomeMes,
-        receitas,
-        totalOS,
-        despesas,
-        saldo,
-        totalLancamentos: lancamentos.length,
-        totalOrdens: osPagas.length,
-        fechadoEm: serverTimestamp(),
-      });
-      setFechamentos(f => [...f, { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo }]);
-      alert(`✅ Mês ${nomeMes} fechado com sucesso!`);
-    } catch(err) {
-      alert("Erro ao fechar mês: " + err.message);
     }
   }
   const cards = [
@@ -630,23 +598,12 @@ function AbaFinanceiro({ financeiro, ordens }) {
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
-          {!erroFechamento && (mesFechado
-            ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
-            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b44", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
-          )}
+
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
 
-      {mesFechado && (
-        <div style={{ background:"#48bb7811", border:"1px solid #48bb7833", borderRadius:10, padding:"12px 16px", marginBottom:20, display:"flex", alignItems:"center", gap:10 }}>
-          <span style={{ fontSize:18 }}>✅</span>
-          <div>
-            <div style={{ color:"#48bb78", fontWeight:600, fontSize:13 }}>Mês fechado</div>
-            <div style={{ color:"#888", fontSize:12 }}>Este mês já foi fechado. Receitas: {formatarMoeda(mesFechado.receitas + mesFechado.totalOS)} · Despesas: {formatarMoeda(mesFechado.despesas)} · Saldo: {formatarMoeda(mesFechado.saldo)}</div>
-          </div>
-        </div>
-      )}
+
 
       {/* Cards resumo */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
