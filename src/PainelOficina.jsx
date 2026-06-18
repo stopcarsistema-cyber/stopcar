@@ -417,10 +417,19 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], onSalvar, onFe
           <h3>{dados ? `Editar OS #${dados.numero || "---"}` : "Nova OS"}</h3>
           <button className="modal-close" onClick={onFechar}>✕</button>
         </div>
-        <div className="modal-tabs">
-          {["dados", "estoque", "checklist"].map(t => (
-            <button key={t} className={"modal-tab" + (abaModal === t ? " ativo" : "")} onClick={() => setAbaModal(t)}>
-              {t === "dados" ? "Dados" : t === "estoque" ? `Peças/Estoque${itensOS.length > 0 ? ` (${itensOS.length})` : ""}` : "Checklist"}
+        <div style={{ display:"flex", gap:4, padding:"0 20px", borderBottom:"1px solid #2a2a2a", marginBottom:0 }}>
+          {[
+            { key:"dados", label:"📋 Dados" },
+            { key:"estoque", label:`📦 Peças${itensOS.length > 0 ? ` (${itensOS.length})` : ""}` },
+            { key:"checklist", label:"✅ Checklist" },
+          ].map(t => (
+            <button key={t.key} onClick={() => setAbaModal(t.key)} style={{
+              padding:"10px 16px", fontSize:13, fontWeight:600, cursor:"pointer", border:"none",
+              borderBottom: abaModal === t.key ? "2px solid #e53e3e" : "2px solid transparent",
+              background:"transparent", color: abaModal === t.key ? "#fff" : "#666",
+              marginBottom:-1, transition:"color 0.15s"
+            }}>
+              {t.label}
             </button>
           ))}
         </div>
