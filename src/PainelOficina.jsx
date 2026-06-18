@@ -135,7 +135,7 @@ export default function PainelOficina({ usuario }) {
         <button className="btn-sair" onClick={() => signOut(auth)}>Sair</button>
       </header>
       <main className="painel-main">
-        {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} />}
+        {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} setAba={setAba} />}
         {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} />}
         {aba === 2 && <AbaHistorico ordens={ordens} />}
         {aba === 3 && <AbaFinanceiro financeiro={financeiro} ordens={ordens} />}
@@ -147,7 +147,7 @@ export default function PainelOficina({ usuario }) {
   );
 }
 
-function AbaDashboard({ ordens, financeiro, estoque }) {
+function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
   const hoje = new Date();
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   const toDate = ts => ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date(0);
@@ -169,14 +169,14 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
   const topServicos = Object.entries(contagemServicos).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   const cards = [
-    { label: "OS Hoje",           valor: ordensHoje.length,                     icon: "📋", cor: "#e53e3e" },
-    { label: "Em Andamento",      valor: emAndamento.length,                    icon: "🔧", cor: "#ed8936" },
-    { label: "Aguardando",        valor: aguardando.length,                     icon: "⏳", cor: "#ecc94b" },
-    { label: "OS no Mês",         valor: ordensMes.length,                      icon: "📅", cor: "#48bb78" },
-    { label: "Faturamento Hoje",  valor: formatarMoeda(faturamentoHoje),        icon: "💰", cor: "#48bb78" },
-    { label: "Faturamento do Mês",valor: formatarMoeda(faturamentoMes),         icon: "📈", cor: "#38b2ac" },
-    { label: "Despesas do Mês",   valor: formatarMoeda(despesasMes),            icon: "📉", cor: "#e53e3e" },
-    { label: "Lucro do Mês",      valor: formatarMoeda(faturamentoMes - despesasMes), icon: "🏆", cor: (faturamentoMes - despesasMes) >= 0 ? "#48bb78" : "#e53e3e" },
+    { label: "OS Hoje",           valor: ordensHoje.length,                     icon: "📋", cor: "#e53e3e",  aba: 1 },
+    { label: "Em Andamento",      valor: emAndamento.length,                    icon: "🔧", cor: "#ed8936",  aba: 1 },
+    { label: "Aguardando",        valor: aguardando.length,                     icon: "⏳", cor: "#ecc94b",  aba: 1 },
+    { label: "OS no Mês",         valor: ordensMes.length,                      icon: "📅", cor: "#48bb78",  aba: 1 },
+    { label: "Faturamento Hoje",  valor: formatarMoeda(faturamentoHoje),        icon: "💰", cor: "#48bb78",  aba: 3 },
+    { label: "Faturamento do Mês",valor: formatarMoeda(faturamentoMes),         icon: "📈", cor: "#38b2ac",  aba: 3 },
+    { label: "Despesas do Mês",   valor: formatarMoeda(despesasMes),            icon: "📉", cor: "#e53e3e",  aba: 3 },
+    { label: "Lucro do Mês",      valor: formatarMoeda(faturamentoMes - despesasMes), icon: "🏆", cor: (faturamentoMes - despesasMes) >= 0 ? "#48bb78" : "#e53e3e", aba: 3 },
   ];
 
   return (
@@ -199,7 +199,9 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
       {/* Grid de cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))", gap:14, marginBottom:24 }}>
         {cards.map((c, i) => (
-          <div key={i} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden" }}>
+          <div key={i} onClick={() => setAba(c.aba)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden", cursor:"pointer", transition:"border-color 0.15s, transform 0.1s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = c.cor; e.currentTarget.style.transform = "translateY(-2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.transform = "translateY(0)"; }}>
             <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
             <div>
               <div style={{ color:"#fff", fontSize:20, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
@@ -213,7 +215,7 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
       {/* Colunas inferiores */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:16 }}>
         {/* Top Serviços */}
-        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22 }}>
+        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#e53e3e"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
           <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🏅 Top Serviços</h3>
           {topServicos.length === 0
             ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum serviço ainda.</p>
@@ -228,7 +230,7 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
         </div>
 
         {/* Na oficina agora */}
-        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22 }}>
+        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#ed8936"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
           <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🚗 Na Oficina Agora</h3>
           {emAndamento.length === 0
             ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum carro em andamento.</p>
@@ -563,6 +565,17 @@ function AbaFinanceiro({ financeiro, ordens }) {
   const totalOS = osPagas.reduce((a,o) => a+(Number(o.valor)||0), 0);
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
 
+  const [modalFechamento, setModalFechamento] = useState(false);
+  const [fechamentos, setFechamentos] = useState([]);
+
+  useEffect(() => {
+    getDocs(collection(db, "fechamentos")).then(snap => {
+      setFechamentos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  }, []);
+
+  const mesFechado = fechamentos.find(f => f.mes === filtroMes);
+
   async function salvar(dados) {
     await addDoc(collection(db, "financeiro"), { ...dados, criadoEm: serverTimestamp() });
     setModal(false);
@@ -574,6 +587,24 @@ function AbaFinanceiro({ financeiro, ordens }) {
     } catch (err) {
       alert("Erro ao excluir: " + err.message);
     }
+  }
+
+  async function fecharMes() {
+    if (!window.confirm(`Confirmar fechamento de ${filtroMes.replace("-", "/")}? Esta ação registra o resultado do mês.`)) return;
+    const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+    await addDoc(collection(db, "fechamentos"), {
+      mes: filtroMes,
+      nomeMes,
+      receitas,
+      totalOS,
+      despesas,
+      saldo: receitas + totalOS - despesas,
+      totalLancamentos: lancamentos.length,
+      totalOrdens: osPagas.length,
+      fechadoEm: serverTimestamp(),
+    });
+    setFechamentos(f => [...f, { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo: receitas + totalOS - despesas }]);
+    alert(`✅ Mês ${nomeMes} fechado com sucesso!`);
   }
 
   const saldo = receitas + totalOS - despesas;
@@ -596,9 +627,23 @@ function AbaFinanceiro({ financeiro, ordens }) {
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
+          {mesFechado
+            ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"6px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
+            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b44", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
+          }
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
+
+      {mesFechado && (
+        <div style={{ background:"#48bb7811", border:"1px solid #48bb7833", borderRadius:10, padding:"12px 16px", marginBottom:20, display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:18 }}>✅</span>
+          <div>
+            <div style={{ color:"#48bb78", fontWeight:600, fontSize:13 }}>Mês fechado</div>
+            <div style={{ color:"#888", fontSize:12 }}>Este mês já foi fechado. Receitas: {formatarMoeda(mesFechado.receitas + mesFechado.totalOS)} · Despesas: {formatarMoeda(mesFechado.despesas)} · Saldo: {formatarMoeda(mesFechado.saldo)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Cards resumo */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
