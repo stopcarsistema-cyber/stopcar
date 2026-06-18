@@ -686,7 +686,7 @@ function ModalFinanceiro({ onSalvar, onFechar }) {
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onFechar}>Cancelar</button>
-          <button className="btn-primary" onClick={() => onSalvar(form)}>Salvar</button>
+          <button className="btn-primary" onClick={() => onSalvar({ ...form, veiculos, placa: veiculos[0]?.placa || "", modelo: veiculos[0]?.modelo || "", cor: veiculos[0]?.cor || "", ano: veiculos[0]?.ano || "" })}>Salvar</button>
         </div>
       </div>
     </div>
@@ -817,34 +817,26 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     numero: dados?.numero || "",
     bairro: dados?.bairro || "",
     cidade: dados?.cidade || "",
-    placa: dados?.placa || "",
-    modelo: dados?.modelo || "",
-    cor: dados?.cor || "",
-    ano: dados?.ano || "",
     obs: dados?.obs || "",
     id: dados?.id || null,
   });
 
-  const [buscandoPlaca, setBuscandoPlaca] = useState(false);
+  const [veiculos, setVeiculos] = useState(
+    dados?.veiculos?.length > 0
+      ? dados.veiculos
+      : [{ placa: dados?.placa || "", modelo: dados?.modelo || "", cor: dados?.cor || "", ano: dados?.ano || "" }]
+  );
+
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
-  async function buscarPlaca(placa) {
-    const nums = placa.replace(/[^A-Z0-9]/g, "");
-    if (nums.length !== 7) return;
-    setBuscandoPlaca(true);
-    try {
-      const res = await fetch(`https://brasilapi.com.br/api/vehicles/v1/${nums}`);
-      if (res.ok) {
-        const data = await res.json();
-        setForm(f => ({
-          ...f,
-          modelo: data.modelo || f.modelo,
-          ano: data.ano ? String(data.ano) : f.ano,
-          cor: data.cor || f.cor,
-        }));
-      }
-    } catch {}
-    finally { setBuscandoPlaca(false); }
+  function setVeiculo(i, k, v) {
+    setVeiculos(vs => vs.map((v2, idx) => idx === i ? { ...v2, [k]: v } : v2));
+  }
+  function addVeiculo() {
+    setVeiculos(vs => [...vs, { placa: "", modelo: "", cor: "", ano: "" }]);
+  }
+  function removeVeiculo(i) {
+    setVeiculos(vs => vs.filter((_, idx) => idx !== i));
   }
 
   async function buscarCEP(cep) {
@@ -885,18 +877,24 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
             <label>Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value)} placeholder="Cidade" /></label>
           </div>
 
-          <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>🚗 Veículo</p>
-          <div className="form-grid">
-            <label>Placa
-              <div style={{ position:"relative" }}>
-                <input value={form.placa} onChange={e=>{ const v=mascaraPlaca(e.target.value); set("placa",v); buscarPlaca(v); }} placeholder="ABC-1234 ou ABC1D23" maxLength={8} style={{ paddingRight: buscandoPlaca ? 36 : undefined }} />
-                {buscandoPlaca && <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", fontSize:14, color:"#888" }}>⏳</span>}
-              </div>
-            </label>
-            <label>Modelo<input value={form.modelo} onChange={e=>set("modelo",e.target.value)} placeholder="Fiat Uno" /></label>
-            <label>Cor<input value={form.cor} onChange={e=>set("cor",e.target.value)} placeholder="Branco" /></label>
-            <label>Ano<input value={form.ano} onChange={e=>set("ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"16px 0 10px" }}>
+            <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:0 }}>🚗 Veículos</p>
+            <button type="button" onClick={addVeiculo} style={{ background:"#e53e3e22", color:"#e53e3e", border:"1px solid #e53e3e44", borderRadius:6, padding:"3px 12px", fontSize:12, fontWeight:600, cursor:"pointer" }}>+ Adicionar veículo</button>
           </div>
+          {veiculos.map((v, i) => (
+            <div key={i} style={{ background:"#111", border:"1px solid #2a2a2a", borderRadius:10, padding:"14px", marginBottom:10, position:"relative" }}>
+              {veiculos.length > 1 && (
+                <button type="button" onClick={() => removeVeiculo(i)} style={{ position:"absolute", top:10, right:10, background:"#e53e3e22", color:"#fc8181", border:"none", borderRadius:6, width:24, height:24, cursor:"pointer", fontSize:14, display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+              )}
+              <div style={{ color:"#888", fontSize:11, fontWeight:600, textTransform:"uppercase", marginBottom:10 }}>Veículo {i + 1}</div>
+              <div className="form-grid">
+                <label>Placa<input value={v.placa} onChange={e=>setVeiculo(i,"placa",mascaraPlaca(e.target.value))} placeholder="ABC-1234 ou ABC1D23" maxLength={8} /></label>
+                <label>Modelo<input value={v.modelo} onChange={e=>setVeiculo(i,"modelo",e.target.value)} placeholder="Fiat Uno" /></label>
+                <label>Cor<input value={v.cor} onChange={e=>setVeiculo(i,"cor",e.target.value)} placeholder="Branco" /></label>
+                <label>Ano<input value={v.ano} onChange={e=>setVeiculo(i,"ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
+              </div>
+            </div>
+          ))}
 
           <div className="form-grid" style={{ marginTop: 16 }}>
             <label className="span2">Observações<textarea value={form.obs} onChange={e=>set("obs",e.target.value)} rows={2} placeholder="Informações adicionais..." /></label>
@@ -905,7 +903,7 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onFechar}>Cancelar</button>
-          <button className="btn-primary" onClick={() => onSalvar(form)}>Salvar</button>
+          <button className="btn-primary" onClick={() => onSalvar({ ...form, veiculos, placa: veiculos[0]?.placa || "", modelo: veiculos[0]?.modelo || "", cor: veiculos[0]?.cor || "", ano: veiculos[0]?.ano || "" })}>Salvar</button>
         </div>
       </div>
     </div>
