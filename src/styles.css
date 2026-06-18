@@ -1,3 +1,27 @@
+/* ─── Tema Claro ─────────────────────────────────────────────────────────── */
+[data-tema="claro"] {
+  --preto:         #F0F2F5;
+  --cinza-escuro:  #FFFFFF;
+  --cinza:         #E8EAED;
+  --cinza-mid:     #CDD0D5;
+  --cinza-claro:   #888888;
+  --borda:         #DDE0E5;
+  --texto:         #111111;
+  --texto-sub:     #555555;
+  --shadow:        0 2px 16px rgba(0,0,0,.10);
+}
+[data-tema="claro"] input,
+[data-tema="claro"] textarea,
+[data-tema="claro"] select {
+  background: #F0F2F5;
+  border-color: #DDE0E5;
+  color: #111111;
+}
+[data-tema="claro"] .os-card,
+[data-tema="claro"] .modal {
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+}
+
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 :root {
   --preto:    #0D0D0D;

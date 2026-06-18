@@ -96,6 +96,16 @@ function imprimirOS(os) {
 
 export default function PainelOficina({ usuario }) {
   const [aba, setAba] = useState(0);
+  const [tema, setTema] = useState(() => localStorage.getItem("stopcar-tema") || "escuro");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-tema", tema);
+    localStorage.setItem("stopcar-tema", tema);
+  }, [tema]);
+
+  function alternarTema() {
+    setTema(t => t === "escuro" ? "claro" : "escuro");
+  }
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
@@ -132,6 +142,15 @@ export default function PainelOficina({ usuario }) {
             <button key={i} className={"nav-tab" + (aba === i ? " ativo" : "")} onClick={() => setAba(i)}>{a}</button>
           ))}
         </nav>
+        <button
+          onClick={alternarTema}
+          title={tema === "escuro" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+          style={{ background:"transparent", border:"1px solid var(--borda)", borderRadius:8, padding:"6px 12px", color:"var(--texto-sub)", fontSize:18, cursor:"pointer", transition:"all 0.2s", display:"flex", alignItems:"center", gap:6 }}
+          onMouseEnter={e => e.currentTarget.style.borderColor="var(--cinza-mid)"}
+          onMouseLeave={e => e.currentTarget.style.borderColor="var(--borda)"}
+        >
+          {tema === "escuro" ? "☀️" : "🌙"}
+        </button>
         <button className="btn-sair" onClick={() => signOut(auth)}>Sair</button>
       </header>
       <main className="painel-main">
