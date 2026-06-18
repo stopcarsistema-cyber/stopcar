@@ -1,37 +1,19 @@
-/* ─── Tema Claro ─────────────────────────────────────────────────────────── */
-[data-tema="claro"] {
-  --preto:         #F0F2F5;
-  --cinza-escuro:  #FFFFFF;
-  --cinza:         #E8EAED;
-  --cinza-mid:     #CDD0D5;
-  --cinza-claro:   #888888;
-  --borda:         #DDE0E5;
-  --texto:         #111111;
-  --texto-sub:     #555555;
-  --shadow:        0 2px 16px rgba(0,0,0,.10);
-}
-[data-tema="claro"] input,
-[data-tema="claro"] textarea,
-[data-tema="claro"] select {
-  background: #F0F2F5;
-  border-color: #DDE0E5;
-  color: #111111;
-}
-[data-tema="claro"] .os-card,
-[data-tema="claro"] .modal {
-  box-shadow: 0 2px 12px rgba(0,0,0,.08);
-}
-
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 :root {
-  --preto:    #0D0D0D;
-  --cinza-escuro: #141414;
-  --cinza:    #222222;
-  --cinza-mid: #333333;
-  --cinza-claro: #666666;
-  --borda:    #2A2A2A;
-  --texto:    #F0F0F0;
-  --texto-sub:#888888;
+  /* ── Tema Escuro (padrão) ── */
+  --fundo:         #0D0D0D;
+  --preto:         #0D0D0D;
+  --cinza-escuro:  #141414;
+  --cinza:         #222222;
+  --cinza-mid:     #333333;
+  --cinza-claro:   #666666;
+  --borda:         #2A2A2A;
+  --texto:         #F0F0F0;
+  --texto-sub:     #888888;
+  --input-bg:      #141414;
+  --card-bg:       #141414;
+  --header-bg:     #111111;
+  --shadow:        0 2px 16px rgba(0,0,0,.65);
 
   /* STOPCAR brand */
   --vermelho:      #CC0000;
@@ -46,10 +28,27 @@
 
   --radius:   8px;
   --radius-lg:14px;
-  --shadow:   0 2px 16px rgba(0,0,0,.65);
   --font-body: 'Archivo', system-ui, sans-serif;
   --font-display: 'Saira Condensed', 'Archivo', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
+}
+
+/* ── Tema Claro ── */
+[data-tema="claro"] {
+  --fundo:         #F0F2F5;
+  --preto:         #F0F2F5;
+  --cinza-escuro:  #FFFFFF;
+  --cinza:         #E8EAED;
+  --cinza-mid:     #C8CBD0;
+  --cinza-claro:   #888888;
+  --borda:         #D8DBE0;
+  --texto:         #111111;
+  --texto-sub:     #555555;
+  --input-bg:      #F5F6F8;
+  --card-bg:       #FFFFFF;
+  --header-bg:     #FFFFFF;
+  --shadow:        0 2px 16px rgba(0,0,0,.10);
+  --vermelho-dim:  #CC000015;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -57,7 +56,7 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-body);
-  background: var(--preto);
+  background: var(--fundo);
   color: var(--texto);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -66,7 +65,7 @@ input, textarea, select, button { font-family: inherit; font-size: 1rem; }
 button { cursor: pointer; border: none; background: none; }
 input, textarea, select {
   width: 100%;
-  background: var(--cinza-escuro);
+  background: var(--input-bg);
   border: 1px solid var(--borda);
   border-radius: var(--radius);
   color: var(--texto);
@@ -120,7 +119,7 @@ label { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; fo
 .splash {
   display: flex; align-items: center; justify-content: center;
   height: 100vh;
-  background: var(--preto);
+  background: var(--fundo);
 }
 
 /* ─── Site header (portal público) ──────────────────────────────────────── */
@@ -356,6 +355,8 @@ label { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; fo
 .painel { display: flex; flex-direction: column; min-height: 100vh; }
 
 .painel-header {
+  background: var(--header-bg);
+  transition: background 0.3s, border-color 0.3s;
   display: flex; align-items: center; gap: 1rem;
   padding: 0 1.5rem;
   background: #000;
@@ -621,7 +622,9 @@ label { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; fo
   .span2 { grid-column: span 1; }
   .servicos-grid { grid-template-columns: 1fr; }
   .painel-logo span:last-child { display: none; }
-  .painel-header { padding: 0 .75rem; gap: .5rem; }
+  .painel-header {
+  background: var(--header-bg);
+  transition: background 0.3s, border-color 0.3s; padding: 0 .75rem; gap: .5rem; }
   .nav-tab { padding: 0 .65rem; font-size: .78rem; }
   .tabela-header, .tabela-row { grid-template-columns: 1.5fr 1fr 1fr; }
   .tabela-header span:nth-child(4),
@@ -632,3 +635,32 @@ label { display: flex; flex-direction: column; gap: .35rem; font-size: .8rem; fo
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition-duration: .01ms !important; }
 }
+
+/* ─── Transição suave entre temas ─────────────────────────────────────────── */
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.15s ease;
+}
+button, input, select, textarea { transition: background-color 0.25s ease, border-color 0.15s ease; }
+
+/* ─── Tema claro: overrides específicos ───────────────────────────────────── */
+[data-tema="claro"] body { background: #F0F2F5; }
+[data-tema="claro"] .splash { background: #F0F2F5; }
+[data-tema="claro"] .painel-header { background: #FFFFFF; border-bottom-color: #D8DBE0; box-shadow: 0 1px 8px rgba(0,0,0,.08); }
+[data-tema="claro"] .os-card { background: #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+[data-tema="claro"] .modal { background: #FFFFFF; box-shadow: 0 8px 40px rgba(0,0,0,.15); }
+[data-tema="claro"] .modal-overlay { background: rgba(0,0,0,.4); }
+[data-tema="claro"] .kanban-pill { background: #FFFFFF; }
+[data-tema="claro"] .portal-card { background: #FFFFFF; }
+[data-tema="claro"] .agenda-card { background: #FFFFFF; }
+[data-tema="claro"] .tabela-row:hover { background: #F5F6F8; }
+[data-tema="claro"] input,
+[data-tema="claro"] textarea,
+[data-tema="claro"] select { background: #F5F6F8; border-color: #D8DBE0; color: #111111; }
+[data-tema="claro"] .btn-secondary { background: #E8EAED; color: #111; border-color: #C8CBD0; }
+[data-tema="claro"] .btn-secondary:hover { background: #C8CBD0; }
+[data-tema="claro"] .btn-icon:hover { background: #E8EAED; }
+[data-tema="claro"] .btn-sair { color: #555; border-color: #D8DBE0; }
+[data-tema="claro"] .btn-sair:hover { color: #111; }
+[data-tema="claro"] .nav-tab { color: #555; }
+[data-tema="claro"] .nav-tab:hover { color: #111; }
+[data-tema="claro"] .os-acoes { border-top-color: #E8EAED; }

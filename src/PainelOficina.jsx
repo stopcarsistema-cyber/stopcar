@@ -102,10 +102,6 @@ export default function PainelOficina({ usuario }) {
     document.documentElement.setAttribute("data-tema", tema);
     localStorage.setItem("stopcar-tema", tema);
   }, [tema]);
-
-  function alternarTema() {
-    setTema(t => t === "escuro" ? "claro" : "escuro");
-  }
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
@@ -143,13 +139,22 @@ export default function PainelOficina({ usuario }) {
           ))}
         </nav>
         <button
-          onClick={alternarTema}
-          title={tema === "escuro" ? "Mudar para tema claro" : "Mudar para tema escuro"}
-          style={{ background:"transparent", border:"1px solid var(--borda)", borderRadius:8, padding:"6px 12px", color:"var(--texto-sub)", fontSize:18, cursor:"pointer", transition:"all 0.2s", display:"flex", alignItems:"center", gap:6 }}
-          onMouseEnter={e => e.currentTarget.style.borderColor="var(--cinza-mid)"}
-          onMouseLeave={e => e.currentTarget.style.borderColor="var(--borda)"}
+          onClick={() => setTema(t => t === "escuro" ? "claro" : "escuro")}
+          title={tema === "escuro" ? "Ativar tema claro" : "Ativar tema escuro"}
+          style={{
+            background: tema === "claro" ? "#111" : "#fff",
+            border: "1px solid var(--borda)",
+            borderRadius: 20,
+            padding: "4px 12px",
+            cursor: "pointer",
+            fontSize: 16,
+            display: "flex", alignItems: "center", gap: 6,
+            color: tema === "claro" ? "#fff" : "#111",
+            fontWeight: 600, fontSize: 12,
+            transition: "all 0.3s"
+          }}
         >
-          {tema === "escuro" ? "☀️" : "🌙"}
+          {tema === "escuro" ? "☀️ Claro" : "🌙 Escuro"}
         </button>
         <button className="btn-sair" onClick={() => signOut(auth)}>Sair</button>
       </header>
