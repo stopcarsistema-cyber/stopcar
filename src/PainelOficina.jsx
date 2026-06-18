@@ -136,7 +136,7 @@ export default function PainelOficina({ usuario }) {
       </header>
       <main className="painel-main">
         {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} />}
-        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} />}
+        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} />}
         {aba === 2 && <AbaHistorico ordens={ordens} />}
         {aba === 3 && <AbaFinanceiro financeiro={financeiro} ordens={ordens} />}
         {aba === 4 && <AbaClientes clientes={clientes} ordens={ordens} />}
@@ -248,7 +248,7 @@ function AbaDashboard({ ordens, financeiro, estoque }) {
   );
 }
 
-function AbaOS({ ordens, mecanicos }) {
+function AbaOS({ ordens, mecanicos, clientes }) {
   const [modal, setModal] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [busca, setBusca] = useState("");
@@ -346,12 +346,12 @@ function AbaOS({ ordens, mecanicos }) {
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, onSalvar, onFechar }) {
+function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
@@ -365,6 +365,18 @@ function ModalOS({ dados, mecanicos, onSalvar, onFechar }) {
   const [abaModal, setAbaModal] = useState("dados");
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
   function setCheck(k, v) { setForm(f => ({ ...f, checklist: { ...f.checklist, [k]: v } })); }
+  const [buscaCliente, setBuscaCliente] = useState(form.cliente || "");
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+  const sugestoes = buscaCliente.length >= 2
+    ? clientes.filter(c => c.nome?.toLowerCase().includes(buscaCliente.toLowerCase())).slice(0, 6)
+    : [];
+
+  function selecionarCliente(c) {
+    setForm(f => ({ ...f, cliente: c.nome, telefone: c.telefone || f.telefone, placa: c.placa || f.placa, modelo: c.modelo || f.modelo }));
+    setBuscaCliente(c.nome);
+    setMostrarSugestoes(false);
+  }
+
   const statusCheck = { ok: "OK", atencao: "Atencao", urgente: "Urgente", na: "—" };
 
   return (
@@ -384,7 +396,26 @@ function ModalOS({ dados, mecanicos, onSalvar, onFechar }) {
         <div className="modal-body">
           {abaModal === "dados" && (
             <div className="form-grid">
-              <label>Cliente<input value={form.cliente} onChange={e => set("cliente", e.target.value)} placeholder="Nome do cliente" /></label>
+              <label style={{ position:"relative" }}>Cliente
+                <input value={buscaCliente}
+                  onChange={e => { setBuscaCliente(e.target.value); set("cliente", e.target.value); setMostrarSugestoes(true); }}
+                  onFocus={() => setMostrarSugestoes(true)}
+                  onBlur={() => setTimeout(() => setMostrarSugestoes(false), 150)}
+                  placeholder="Nome do cliente" autoComplete="off" />
+                {mostrarSugestoes && sugestoes.length > 0 && (
+                  <div style={{ position:"absolute", top:"100%", left:0, right:0, background:"#1a1a1a", border:"1px solid #333", borderRadius:8, zIndex:100, boxShadow:"0 8px 24px #0008", marginTop:2 }}>
+                    {sugestoes.map(c => (
+                      <div key={c.id} onMouseDown={() => selecionarCliente(c)}
+                        style={{ padding:"10px 14px", cursor:"pointer", borderBottom:"1px solid #222", display:"flex", flexDirection:"column", gap:2 }}
+                        onMouseEnter={e => e.currentTarget.style.background="#2a2a2a"}
+                        onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                        <span style={{ color:"#fff", fontSize:13, fontWeight:600 }}>{c.nome}</span>
+                        <span style={{ color:"#888", fontSize:11 }}>{c.placa ? `${c.placa} · ` : ""}{c.modelo || ""}{c.telefone ? ` · ${c.telefone}` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </label>
               <label>Telefone<input value={form.telefone} onChange={e => set("telefone", e.target.value)} placeholder="(11) 99999-9999" /></label>
               <label>Placa<input value={form.placa} onChange={e => set("placa", e.target.value.toUpperCase())} placeholder="ABC-1234" /></label>
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
