@@ -618,7 +618,13 @@ function AbaFinanceiro({ financeiro, ordens }) {
 
           {mesFechado
             ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
-            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b55", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
+            : <button onClick={fecharMes}
+              onMouseEnter={e => { e.currentTarget.style.background="#ecc94b"; e.currentTarget.style.color="#111"; }}
+              onMouseLeave={e => { e.currentTarget.style.background="linear-gradient(135deg,#b7791f,#ecc94b)"; e.currentTarget.style.color="#111"; }}
+              style={{ background:"linear-gradient(135deg,#b7791f,#ecc94b)", color:"#111", border:"none", borderRadius:10, padding:"9px 18px", fontSize:13, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:6, boxShadow:"0 2px 12px #ecc94b33", letterSpacing:"0.03em" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Fechar Mês
+            </button>
           }
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
