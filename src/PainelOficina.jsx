@@ -565,16 +565,16 @@ function AbaFinanceiro({ financeiro, ordens }) {
   const totalOS = osPagas.reduce((a,o) => a+(Number(o.valor)||0), 0);
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
 
-  const [modalFechamento, setModalFechamento] = useState(false);
   const [fechamentos, setFechamentos] = useState([]);
 
   useEffect(() => {
     getDocs(collection(db, "fechamentos")).then(snap => {
       setFechamentos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    }).catch(() => {});
   }, []);
 
   const mesFechado = fechamentos.find(f => f.mes === filtroMes);
+  const saldo = receitas + totalOS - despesas;
 
   async function salvar(dados) {
     await addDoc(collection(db, "financeiro"), { ...dados, criadoEm: serverTimestamp() });
@@ -591,23 +591,25 @@ function AbaFinanceiro({ financeiro, ordens }) {
 
   async function fecharMes() {
     if (!window.confirm(`Confirmar fechamento de ${filtroMes.replace("-", "/")}? Esta ação registra o resultado do mês.`)) return;
-    const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
-    await addDoc(collection(db, "fechamentos"), {
-      mes: filtroMes,
-      nomeMes,
-      receitas,
-      totalOS,
-      despesas,
-      saldo: receitas + totalOS - despesas,
-      totalLancamentos: lancamentos.length,
-      totalOrdens: osPagas.length,
-      fechadoEm: serverTimestamp(),
-    });
-    setFechamentos(f => [...f, { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo: receitas + totalOS - despesas }]);
-    alert(`✅ Mês ${nomeMes} fechado com sucesso!`);
+    try {
+      const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+      await addDoc(collection(db, "fechamentos"), {
+        mes: filtroMes,
+        nomeMes,
+        receitas,
+        totalOS,
+        despesas,
+        saldo,
+        totalLancamentos: lancamentos.length,
+        totalOrdens: osPagas.length,
+        fechadoEm: serverTimestamp(),
+      });
+      setFechamentos(f => [...f, { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo }]);
+      alert(`✅ Mês ${nomeMes} fechado com sucesso!`);
+    } catch(err) {
+      alert("Erro ao fechar mês: " + err.message);
+    }
   }
-
-  const saldo = receitas + totalOS - despesas;
   const cards = [
     { label: "Receitas", valor: formatarMoeda(receitas), icon: "📈", cor: "#48bb78" },
     { label: "OS Pagas no Mês", valor: formatarMoeda(totalOS), icon: "✅", cor: "#38b2ac" },
