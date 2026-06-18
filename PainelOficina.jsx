@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  collection, query, orderBy, onSnapshot,
+  collection, query, orderBy, onSnapshot, getDocs,
   addDoc, updateDoc, doc, deleteDoc, serverTimestamp,
 } from "firebase/firestore";
 import { signOut } from "firebase/auth";
@@ -567,6 +567,23 @@ function AbaFinanceiro({ financeiro, ordens }) {
 
   const saldo = receitas + totalOS - despesas;
 
+  const [fechamentos, setFechamentos] = useState({});
+  const [modalFechamento, setModalFechamento] = useState(false);
+  const mesFechado = fechamentos[filtroMes];
+
+  async function fecharMes() {
+    if (!window.confirm(`Fechar o mês ${filtroMes.replace("-","/")}? Isso registra um resumo permanente.`)) return;
+    try {
+      const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
+      const resumo = { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo, totalOrdens: osPagas.length, totalLancamentos: lancamentos.length, fechadoEm: serverTimestamp() };
+      await addDoc(collection(db, "fechamentos"), resumo);
+      setFechamentos(f => ({ ...f, [filtroMes]: resumo }));
+      setModalFechamento(true);
+    } catch(err) {
+      alert("Erro: " + err.message);
+    }
+  }
+
   async function salvar(dados) {
     await addDoc(collection(db, "financeiro"), { ...dados, criadoEm: serverTimestamp() });
     setModal(false);
@@ -599,11 +616,44 @@ function AbaFinanceiro({ financeiro, ordens }) {
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
 
+          {mesFechado
+            ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
+            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b55", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
+          }
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
 
 
+
+      {mesFechado && (
+        <div style={{ background:"#48bb7811", border:"1px solid #48bb7833", borderRadius:10, padding:"12px 18px", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <span style={{ fontSize:20 }}>✅</span>
+            <div>
+              <div style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>Mês fechado — {mesFechado.nomeMes}</div>
+              <div style={{ color:"#888", fontSize:12, marginTop:2 }}>
+                Receitas: {formatarMoeda((mesFechado.receitas||0) + (mesFechado.totalOS||0))} &nbsp;·&nbsp;
+                Despesas: {formatarMoeda(mesFechado.despesas||0)} &nbsp;·&nbsp;
+                Saldo: <span style={{ color: (mesFechado.saldo||0) >= 0 ? "#48bb78" : "#fc8181", fontWeight:700 }}>{formatarMoeda(mesFechado.saldo||0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalFechamento && (
+        <div className="modal-overlay" onClick={() => setModalFechamento(false)}>
+          <div className="modal" style={{ maxWidth:420, textAlign:"center" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+            <h3 style={{ color:"#fff", marginBottom:8 }}>Mês fechado com sucesso!</h3>
+            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Receitas: <strong style={{color:"#48bb78"}}>{formatarMoeda(receitas + totalOS)}</strong></p>
+            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Despesas: <strong style={{color:"#fc8181"}}>{formatarMoeda(despesas)}</strong></p>
+            <p style={{ color:"#888", fontSize:13, marginBottom:20 }}>Saldo: <strong style={{color: saldo >= 0 ? "#48bb78" : "#fc8181"}}>{formatarMoeda(saldo)}</strong></p>
+            <button className="btn-primary" onClick={() => setModalFechamento(false)}>Fechar</button>
+          </div>
+        </div>
+      )}
 
       {/* Cards resumo */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
