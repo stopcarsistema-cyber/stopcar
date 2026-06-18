@@ -565,6 +565,8 @@ function AbaFinanceiro({ financeiro, ordens }) {
   const totalOS = osPagas.reduce((a,o) => a+(Number(o.valor)||0), 0);
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
 
+  const saldo = receitas + totalOS - despesas;
+
   async function salvar(dados) {
     await addDoc(collection(db, "financeiro"), { ...dados, criadoEm: serverTimestamp() });
     setModal(false);
@@ -577,8 +579,6 @@ function AbaFinanceiro({ financeiro, ordens }) {
       alert("Erro ao excluir: " + err.message);
     }
   }
-
-  const saldo = receitas + totalOS - despesas;
   const cards = [
     { label: "Receitas", valor: formatarMoeda(receitas), icon: "📈", cor: "#48bb78" },
     { label: "OS Pagas no Mês", valor: formatarMoeda(totalOS), icon: "✅", cor: "#38b2ac" },
@@ -598,9 +598,12 @@ function AbaFinanceiro({ financeiro, ordens }) {
         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
+
           <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
         </div>
       </div>
+
+
 
       {/* Cards resumo */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
