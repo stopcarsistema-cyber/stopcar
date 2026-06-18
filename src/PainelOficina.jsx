@@ -987,34 +987,74 @@ function AbaEquipe({ mecanicos, ordens }) {
       alert("Erro ao excluir: " + err.message);
     }
   }
+  const hoje = new Date();
+
   return (
-    <div className="aba-content">
-      <div className="aba-header-row"><h2>Equipe</h2><button className="btn-primary btn-sm" onClick={()=>setModal({})}>+ Adicionar mecanico</button></div>
-      {mecanicos.length===0 ? <div className="vazio"><p>Nenhum mecanico cadastrado.</p></div> : (
-        <div className="equipe-grid">
-          {mecanicos.map(m => {
-            const osMec = ordens.filter(o => o.mecanico===m.nome);
-            const hoje = new Date();
-            const totalMes = osMec.filter(o => { const d=o.criadoEm?.toDate?o.criadoEm.toDate():new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
-            return (
-              <div key={m.id} className="mecanico-card">
-                <div className="mecanico-avatar">{m.nome.charAt(0).toUpperCase()}</div>
-                <div className="mecanico-info"><strong>{m.nome}</strong>{m.especialidade&&<span>{m.especialidade}</span>}{m.telefone&&<span>{m.telefone}</span>}</div>
-                <div className="mecanico-stats">
-                  <div><span className="stat-num">{osMec.length}</span><span>OS total</span></div>
-                  <div><span className="stat-num azul">{totalMes.length}</span><span>este mes</span></div>
-                  <div><span className="stat-num verde">{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span><span>faturado</span></div>
-                </div>
-                <div className="tabela-acoes" style={{marginTop:".5rem"}}>
-                  <button className="btn-icon" onClick={()=>setModal(m)}>✏️</button>
-                  <button className="btn-icon" onClick={()=>excluir(m.id)}>🗑️</button>
-                </div>
-              </div>
-            );
-          })}
+    <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto", fontFamily:"'Inter','Segoe UI',sans-serif" }}>
+
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24 }}>
+        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
+          <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Equipe</h2>
+          <span style={{ color:"#888", fontSize:13 }}>Mecânicos cadastrados</span>
         </div>
-      )}
-      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={()=>setModal(null)} />}
+        <button className="btn-primary btn-sm" onClick={() => setModal({})}>+ Adicionar mecânico</button>
+      </div>
+
+      {mecanicos.length === 0
+        ? <p style={{ color:"#555", fontSize:14, fontStyle:"italic" }}>Nenhum mecânico cadastrado.</p>
+        : (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))", gap:16 }}>
+            {mecanicos.map(m => {
+              const osMec = ordens.filter(o => o.mecanico === m.nome);
+              const osMes = osMec.filter(o => { const d = o.criadoEm?.toDate ? o.criadoEm.toDate() : new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
+              const faturado = osMec.reduce((a,o) => a+(Number(o.valor)||0), 0);
+              const iniciais = m.nome.split(" ").map(p=>p[0]).join("").toUpperCase().slice(0,2);
+              const cores = ["#e53e3e","#ed8936","#48bb78","#38b2ac","#667eea","#f687b3"];
+              const cor = cores[m.nome.charCodeAt(0) % cores.length];
+
+              return (
+                <div key={m.id} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:14, padding:22, display:"flex", flexDirection:"column", gap:16, position:"relative", overflow:"hidden" }}>
+                  <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:cor }} />
+
+                  {/* Avatar + info */}
+                  <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                    <div style={{ width:52, height:52, borderRadius:12, background:cor+"22", color:cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, flexShrink:0 }}>{iniciais}</div>
+                    <div>
+                      <div style={{ color:"#fff", fontSize:16, fontWeight:700 }}>{m.nome}</div>
+                      {m.especialidade && <div style={{ color:"#888", fontSize:12, marginTop:2 }}>🔧 {m.especialidade}</div>}
+                      {m.telefone && <div style={{ color:"#888", fontSize:12, marginTop:1 }}>📱 {m.telefone}</div>}
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
+                      <div style={{ color:"#fff", fontSize:18, fontWeight:700 }}>{osMec.length}</div>
+                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>OS Total</div>
+                    </div>
+                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
+                      <div style={{ color:"#38b2ac", fontSize:18, fontWeight:700 }}>{osMes.length}</div>
+                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>Este Mês</div>
+                    </div>
+                    <div style={{ background:"#111", borderRadius:8, padding:"10px 8px", textAlign:"center", border:"1px solid #222" }}>
+                      <div style={{ color:"#48bb78", fontSize:14, fontWeight:700 }}>{formatarMoeda(faturado)}</div>
+                      <div style={{ color:"#666", fontSize:10, textTransform:"uppercase", marginTop:2 }}>Faturado</div>
+                    </div>
+                  </div>
+
+                  {/* Ações */}
+                  <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                    <button className="btn-icon" title="Editar" onClick={() => setModal(m)}>✏️</button>
+                    <button className="btn-icon" title="Excluir" onClick={() => excluir(m.id)}>🗑️</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      }
+      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={() => setModal(null)} />}
     </div>
   );
 }
