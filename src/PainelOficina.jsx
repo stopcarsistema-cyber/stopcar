@@ -833,7 +833,7 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     setVeiculos(vs => vs.map((v2, idx) => idx === i ? { ...v2, [k]: v } : v2));
   }
   function addVeiculo() {
-    setVeiculos(vs => [...vs, { placa: "", modelo: "", cor: "", ano: "" }]);
+    setVeiculos(vs => [...vs, { placa: "", modelo: "", cor: "", ano: "", km: "" }]);
   }
   function removeVeiculo(i) {
     setVeiculos(vs => vs.filter((_, idx) => idx !== i));
@@ -892,6 +892,7 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
                 <label>Modelo<input value={v.modelo} onChange={e=>setVeiculo(i,"modelo",e.target.value)} placeholder="Fiat Uno" /></label>
                 <label>Cor<input value={v.cor} onChange={e=>setVeiculo(i,"cor",e.target.value)} placeholder="Branco" /></label>
                 <label>Ano<input value={v.ano} onChange={e=>setVeiculo(i,"ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
+                <label>KM Atual<input value={v.km||""} onChange={e=>setVeiculo(i,"km",e.target.value)} placeholder="Ex: 85000" type="number" /></label>
               </div>
             </div>
           ))}
