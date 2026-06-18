@@ -794,7 +794,27 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     id: dados?.id || null,
   });
 
+  const [buscandoPlaca, setBuscandoPlaca] = useState(false);
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function buscarPlaca(placa) {
+    const nums = placa.replace(/[^A-Z0-9]/g, "");
+    if (nums.length !== 7) return;
+    setBuscandoPlaca(true);
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/vehicles/v1/${nums}`);
+      if (res.ok) {
+        const data = await res.json();
+        setForm(f => ({
+          ...f,
+          modelo: data.modelo || f.modelo,
+          ano: data.ano ? String(data.ano) : f.ano,
+          cor: data.cor || f.cor,
+        }));
+      }
+    } catch {}
+    finally { setBuscandoPlaca(false); }
+  }
 
   async function buscarCEP(cep) {
     const nums = cep.replace(/\D/g, "");
@@ -836,7 +856,12 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
 
           <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>🚗 Veículo</p>
           <div className="form-grid">
-            <label>Placa<input value={form.placa} onChange={e=>set("placa",mascaraPlaca(e.target.value))} placeholder="ABC-1234 ou ABC1D23" maxLength={8} /></label>
+            <label>Placa
+              <div style={{ position:"relative" }}>
+                <input value={form.placa} onChange={e=>{ const v=mascaraPlaca(e.target.value); set("placa",v); buscarPlaca(v); }} placeholder="ABC-1234 ou ABC1D23" maxLength={8} style={{ paddingRight: buscandoPlaca ? 36 : undefined }} />
+                {buscandoPlaca && <span style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", fontSize:14, color:"#888" }}>⏳</span>}
+              </div>
+            </label>
             <label>Modelo<input value={form.modelo} onChange={e=>set("modelo",e.target.value)} placeholder="Fiat Uno" /></label>
             <label>Cor<input value={form.cor} onChange={e=>set("cor",e.target.value)} placeholder="Branco" /></label>
             <label>Ano<input value={form.ano} onChange={e=>set("ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
