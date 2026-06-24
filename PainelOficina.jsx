@@ -99,6 +99,7 @@ export default function PainelOficina({ usuario }) {
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
+  const [servicosExtras, setServicosExtras] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [financeiro, setFinanceiro] = useState([]);
 
@@ -138,7 +139,7 @@ export default function PainelOficina({ usuario }) {
       </header>
       <main className="painel-main">
         {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} setAba={setAba} />}
-        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} />}
+        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} />}
         {aba === 2 && <AbaHistorico ordens={ordens} />}
         {aba === 3 && <AbaFinanceiro financeiro={financeiro} ordens={ordens} />}
         {aba === 4 && <AbaClientes clientes={clientes} ordens={ordens} />}
@@ -252,7 +253,7 @@ function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
   );
 }
 
-function AbaOS({ ordens, mecanicos, clientes }) {
+function AbaOS({ ordens, mecanicos, clientes, estoque = [], servicosExtras = [] }) {
   const [modal, setModal] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [busca, setBusca] = useState("");
