@@ -99,6 +99,7 @@ export default function PainelOficina({ usuario }) {
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
+  const [servicosExtras, setServicosExtras] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [financeiro, setFinanceiro] = useState([]);
 
