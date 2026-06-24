@@ -99,7 +99,6 @@ export default function PainelOficina({ usuario }) {
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
-  const [servicosExtras, setServicosExtras] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [financeiro, setFinanceiro] = useState([]);
 
@@ -115,8 +114,6 @@ export default function PainelOficina({ usuario }) {
         setMecanicos(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "financeiro"), orderBy("criadoEm", "desc")), snap =>
         setFinanceiro(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
-      onSnapshot(collection(db, "servicosExtras"), snap =>
-        setServicosExtras(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
@@ -351,12 +348,12 @@ function AbaOS({ ordens, mecanicos, clientes }) {
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras = [], onSalvar, onFechar }) {
+function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
@@ -380,23 +377,6 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras
     setForm(f => ({ ...f, cliente: c.nome, telefone: c.telefone || f.telefone, placa: c.placa || f.placa, modelo: c.modelo || f.modelo }));
     setBuscaCliente(c.nome);
     setMostrarSugestoes(false);
-  }
-
-  const [modalNovoServico, setModalNovoServico] = useState(false);
-  const [novoServico, setNovoServico] = useState({ nome: "", preco: "" });
-  const todosServicos = [...SERVICOS, ...servicosExtras.map(s => ({ id: s.id, nome: s.nome, preco: s.preco || 0 }))];
-
-  async function salvarNovoServico() {
-    if (!novoServico.nome.trim()) return;
-    try {
-      await addDoc(collection(db, "servicosExtras"), {
-        nome: novoServico.nome.trim(),
-        preco: Number(novoServico.preco) || 0,
-        criadoEm: serverTimestamp(),
-      });
-      setNovoServico({ nome: "", preco: "" });
-      setModalNovoServico(false);
-    } catch(e) { alert("Erro: " + e.message); }
   }
 
   const statusCheck = { ok: "OK", atencao: "Atencao", urgente: "Urgente", na: "—" };
@@ -443,37 +423,12 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
               <label>KM Entrada<input value={form.km} onChange={e => set("km", e.target.value)} placeholder="85000" /></label>
               <label>Prox. Revisao KM<input value={form.proxRevisaoKm} onChange={e => set("proxRevisaoKm", e.target.value)} placeholder="90000" /></label>
-              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                <span style={{ fontSize:"0.75rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--texto-sub,#888)" }}>Serviço</span>
-                <div style={{ display:"flex", flexDirection:"row", gap:6, alignItems:"center" }}>
-                  <select value={form.servico} onChange={e => { set("servico", e.target.value); const s = todosServicos.find(x=>x.id===e.target.value); if (!form.valor && s) set("valor", s.preco); }} style={{ flex:1, minWidth:0 }}>
-                    <option value="">Selecione...</option>
-                    <optgroup label="Serviços Padrão">
-                      {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                    </optgroup>
-                    {servicosExtras.length > 0 && (
-                      <optgroup label="Serviços Personalizados">
-                        {servicosExtras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                      </optgroup>
-                    )}
-                  </select>
-                  <button type="button" onClick={() => setModalNovoServico(v => !v)}
-                    style={{ background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, width:36, height:36, fontSize:22, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>+</button>
-                </div>
-                {modalNovoServico && (
-                  <div style={{ background:"#111", border:"1px solid #e53e3e55", borderRadius:10, padding:14, marginTop:4 }}>
-                    <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>Novo Serviço</p>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      <input value={novoServico.nome} onChange={e => setNovoServico(n => ({...n, nome: e.target.value}))} placeholder="Nome do serviço" />
-                      <input value={novoServico.preco} onChange={e => setNovoServico(n => ({...n, preco: e.target.value}))} placeholder="Preço (R$)" type="number" />
-                      <div style={{ display:"flex", gap:8 }}>
-                        <button type="button" onClick={salvarNovoServico} style={{ flex:1, background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, padding:"8px", fontWeight:700, cursor:"pointer" }}>Salvar</button>
-                        <button type="button" onClick={() => setModalNovoServico(false)} style={{ flex:1, background:"#2a2a2a", color:"#888", border:"none", borderRadius:8, padding:"8px", cursor:"pointer" }}>Cancelar</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <label>Servico
+                <select value={form.servico} onChange={e => { set("servico", e.target.value); if (!form.valor) set("valor", precoServico(e.target.value)); }}>
+                  <option value="">Selecione...</option>
+                  {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </label>
               <label>Mecanico
                 <select value={form.mecanico} onChange={e => set("mecanico", e.target.value)}>
                   <option value="">Selecione...</option>
