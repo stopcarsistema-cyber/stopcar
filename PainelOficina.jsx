@@ -350,12 +350,12 @@ function AbaOS({ ordens, mecanicos, clientes }) {
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
+function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
