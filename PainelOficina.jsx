@@ -114,6 +114,8 @@ export default function PainelOficina({ usuario }) {
         setMecanicos(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "financeiro"), orderBy("criadoEm", "desc")), snap =>
         setFinanceiro(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+      onSnapshot(collection(db, "servicosExtras"), snap =>
+        setServicosExtras(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
@@ -379,6 +381,23 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
     setMostrarSugestoes(false);
   }
 
+  const [modalNovoServico, setModalNovoServico] = useState(false);
+  const [novoServico, setNovoServico] = useState({ nome: "", preco: "" });
+  const todosServicos = [...SERVICOS, ...servicosExtras.map(s => ({ id: s.id, nome: s.nome, preco: s.preco || 0 }))];
+
+  async function salvarNovoServico() {
+    if (!novoServico.nome.trim()) return;
+    try {
+      await addDoc(collection(db, "servicosExtras"), {
+        nome: novoServico.nome.trim(),
+        preco: Number(novoServico.preco) || 0,
+        criadoEm: serverTimestamp(),
+      });
+      setNovoServico({ nome: "", preco: "" });
+      setModalNovoServico(false);
+    } catch(e) { alert("Erro: " + e.message); }
+  }
+
   const statusCheck = { ok: "OK", atencao: "Atencao", urgente: "Urgente", na: "—" };
 
   return (
@@ -423,12 +442,35 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
               <label>KM Entrada<input value={form.km} onChange={e => set("km", e.target.value)} placeholder="85000" /></label>
               <label>Prox. Revisao KM<input value={form.proxRevisaoKm} onChange={e => set("proxRevisaoKm", e.target.value)} placeholder="90000" /></label>
-              <label>Servico
-                <select value={form.servico} onChange={e => { set("servico", e.target.value); if (!form.valor) set("valor", precoServico(e.target.value)); }}>
-                  <option value="">Selecione...</option>
-                  {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                </select>
+              <label>Serviço
+                <div style={{ display:"flex", gap:6 }}>
+                  <select value={form.servico} onChange={e => { set("servico", e.target.value); const s = todosServicos.find(x=>x.id===e.target.value); if (!form.valor && s) set("valor", s.preco); }} style={{ flex:1 }}>
+                    <option value="">Selecione...</option>
+                    <optgroup label="── Serviços Padrão ──">
+                      {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    </optgroup>
+                    {servicosExtras.length > 0 && (
+                      <optgroup label="── Serviços Personalizados ──">
+                        {servicosExtras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                      </optgroup>
+                    )}
+                  </select>
+                  <button type="button" onClick={() => setModalNovoServico(true)} title="Adicionar novo serviço"
+                    style={{ background:"#e53e3e22", color:"#e53e3e", border:"1px solid #e53e3e44", borderRadius:8, padding:"0 10px", fontSize:18, cursor:"pointer", flexShrink:0 }}>+</button>
+                </div>
               </label>
+
+              {modalNovoServico && (
+                <div style={{ gridColumn:"1/-1", background:"#111", border:"1px solid #e53e3e44", borderRadius:10, padding:16 }}>
+                  <p style={{ color:"#e53e3e", fontSize:12, fontWeight:700, textTransform:"uppercase", marginBottom:10 }}>➕ Novo Serviço Personalizado</p>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    <input value={novoServico.nome} onChange={e => setNovoServico(n => ({...n, nome: e.target.value}))} placeholder="Nome do serviço" style={{ flex:2, minWidth:160 }} />
+                    <input value={novoServico.preco} onChange={e => setNovoServico(n => ({...n, preco: e.target.value}))} placeholder="Preço (R$)" type="number" style={{ flex:1, minWidth:100 }} />
+                    <button type="button" onClick={salvarNovoServico} style={{ background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, padding:"0 16px", fontWeight:700, cursor:"pointer" }}>Salvar</button>
+                    <button type="button" onClick={() => setModalNovoServico(false)} style={{ background:"#2a2a2a", color:"#888", border:"none", borderRadius:8, padding:"0 12px", cursor:"pointer" }}>Cancelar</button>
+                  </div>
+                </div>
+              )}
               <label>Mecanico
                 <select value={form.mecanico} onChange={e => set("mecanico", e.target.value)}>
                   <option value="">Selecione...</option>
