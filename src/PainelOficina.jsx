@@ -114,6 +114,8 @@ export default function PainelOficina({ usuario }) {
         setMecanicos(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "financeiro"), orderBy("criadoEm", "desc")), snap =>
         setFinanceiro(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
+      onSnapshot(collection(db, "servicosExtras"), snap =>
+        setServicosExtras(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
@@ -289,39 +291,6 @@ function AbaOS({ ordens, mecanicos, clientes }) {
     enviarWhatsApp(os.telefone, msg);
   }
 
-  function whatsappOrcamento(os) {
-    if (!os.telefone) { alert("Telefone do cliente nao informado!"); return; }
-    const pecasLista = os.estoqueSelecionado && os.estoqueSelecionado.length > 0
-      ? os.estoqueSelecionado.map(function(i) { return "  - " + i.qtdUsada + "x " + i.nome; }).join("\n")
-      : os.pecas ? "  - " + os.pecas : "  - A definir";
-
-    const msg = [
-      "ORCAMENTO - STOPCAR OFICINA MECANICA",
-      "---",
-      "Ola, " + (os.cliente || "Cliente") + "!",
-      "Segue o orcamento para o seu veiculo:",
-      "",
-      "Veiculo: " + (os.modelo || "-") + " | Placa: " + (os.placa || "-"),
-      os.km ? "KM entrada: " + os.km : "",
-      "",
-      "Servico: " + nomeServico(os.servico),
-      os.obs ? "Descricao: " + os.obs : "",
-      "",
-      "Pecas e Materiais:",
-      pecasLista,
-      "",
-      "Valor Total: " + formatarMoeda(os.valor),
-      "",
-      "---",
-      "Para aprovar ou tirar duvidas, responda esta mensagem.",
-      "STOPCAR Oficina Mecanica"
-    ].filter(function(l) { return l !== null && l !== undefined; }).join("\n");
-
-    var num = os.telefone.replace(/[^0-9]/g, "");
-    var url = "https://wa.me/55" + num + "?text=" + encodeURIComponent(msg);
-    window.open(url, "_blank");
-  }
-
   return (
     <div className="aba-content">
       <div className="kanban-summary">
@@ -372,15 +341,7 @@ function AbaOS({ ordens, mecanicos, clientes }) {
                 <select value={os.status} onChange={e => mudarStatus(os.id, e.target.value)} className="select-status">
                   {Object.entries(STATUS_OS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
-                <button className="btn-icon" title="Enviar Orçamento via WhatsApp"
-                  onClick={() => whatsappOrcamento(os)}
-                  style={{ background:"#25D36622", borderRadius:6, padding:"3px 8px", display:"flex", alignItems:"center", gap:4, fontSize:11, fontWeight:600, color:"#25D366", border:"1px solid #25D36633" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                  Orçamento
-                </button>
-                <button className="btn-icon" title="Avisar que está pronto" onClick={() => whatsappPronto(os)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                </button>
+                <button className="btn-icon" title="WhatsApp" onClick={() => whatsappPronto(os)}><svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>
                 <button className="btn-icon" title="Imprimir" onClick={() => imprimirOS(os)}>🖨️</button>
                 <button className="btn-icon" title="Editar" onClick={() => setModal(os)}>✏️</button>
                 <button className="btn-icon" title="Excluir" onClick={() => excluirOS(os.id)}>🗑️</button>
@@ -389,12 +350,12 @@ function AbaOS({ ordens, mecanicos, clientes }) {
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
+function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
@@ -418,6 +379,23 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
     setForm(f => ({ ...f, cliente: c.nome, telefone: c.telefone || f.telefone, placa: c.placa || f.placa, modelo: c.modelo || f.modelo }));
     setBuscaCliente(c.nome);
     setMostrarSugestoes(false);
+  }
+
+  const [modalNovoServico, setModalNovoServico] = useState(false);
+  const [novoServico, setNovoServico] = useState({ nome: "", preco: "" });
+  const todosServicos = [...SERVICOS, ...servicosExtras.map(s => ({ id: s.id, nome: s.nome, preco: s.preco || 0 }))];
+
+  async function salvarNovoServico() {
+    if (!novoServico.nome.trim()) return;
+    try {
+      await addDoc(collection(db, "servicosExtras"), {
+        nome: novoServico.nome.trim(),
+        preco: Number(novoServico.preco) || 0,
+        criadoEm: serverTimestamp(),
+      });
+      setNovoServico({ nome: "", preco: "" });
+      setModalNovoServico(false);
+    } catch(e) { alert("Erro: " + e.message); }
   }
 
   const statusCheck = { ok: "OK", atencao: "Atencao", urgente: "Urgente", na: "—" };
@@ -464,12 +442,37 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
               <label>KM Entrada<input value={form.km} onChange={e => set("km", e.target.value)} placeholder="85000" /></label>
               <label>Prox. Revisao KM<input value={form.proxRevisaoKm} onChange={e => set("proxRevisaoKm", e.target.value)} placeholder="90000" /></label>
-              <label>Servico
-                <select value={form.servico} onChange={e => { set("servico", e.target.value); if (!form.valor) set("valor", precoServico(e.target.value)); }}>
-                  <option value="">Selecione...</option>
-                  {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                </select>
-              </label>
+              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                <span style={{ fontSize:"0.75rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--texto-sub,#888)" }}>Serviço</span>
+                <div style={{ display:"flex", flexDirection:"row", gap:6, alignItems:"center" }}>
+                  <select value={form.servico} onChange={e => { set("servico", e.target.value); const s = todosServicos.find(x=>x.id===e.target.value); if (!form.valor && s) set("valor", s.preco); }} style={{ flex:1, minWidth:0 }}>
+                    <option value="">Selecione...</option>
+                    <optgroup label="Serviços Padrão">
+                      {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    </optgroup>
+                    {servicosExtras.length > 0 && (
+                      <optgroup label="Serviços Personalizados">
+                        {servicosExtras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                      </optgroup>
+                    )}
+                  </select>
+                  <button type="button" onClick={() => setModalNovoServico(v => !v)}
+                    style={{ background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, width:36, height:36, fontSize:22, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>+</button>
+                </div>
+                {modalNovoServico && (
+                  <div style={{ background:"#111", border:"1px solid #e53e3e55", borderRadius:10, padding:14, marginTop:4 }}>
+                    <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>Novo Serviço</p>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      <input value={novoServico.nome} onChange={e => setNovoServico(n => ({...n, nome: e.target.value}))} placeholder="Nome do serviço" />
+                      <input value={novoServico.preco} onChange={e => setNovoServico(n => ({...n, preco: e.target.value}))} placeholder="Preço (R$)" type="number" />
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button type="button" onClick={salvarNovoServico} style={{ flex:1, background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, padding:"8px", fontWeight:700, cursor:"pointer" }}>Salvar</button>
+                        <button type="button" onClick={() => setModalNovoServico(false)} style={{ flex:1, background:"#2a2a2a", color:"#888", border:"none", borderRadius:8, padding:"8px", cursor:"pointer" }}>Cancelar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <label>Mecanico
                 <select value={form.mecanico} onChange={e => set("mecanico", e.target.value)}>
                   <option value="">Selecione...</option>
@@ -1022,71 +1025,34 @@ function AbaEquipe({ mecanicos, ordens }) {
       alert("Erro ao excluir: " + err.message);
     }
   }
-  const hoje = new Date();
-  const cores = ["#e53e3e","#ed8936","#48bb78","#38b2ac","#667eea","#f687b3","#ecc94b"];
-
   return (
-    <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto", fontFamily:"'Inter','Segoe UI',sans-serif" }}>
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid var(--borda,#2a2a2a)", paddingBottom:16, marginBottom:24 }}>
-        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
-          <h2 style={{ color:"var(--texto,#fff)", fontSize:24, fontWeight:700, margin:0 }}>Equipe</h2>
-          <span style={{ color:"var(--texto-sub,#888)", fontSize:13 }}>{mecanicos.length} mecânico(s)</span>
-        </div>
-        <button className="btn-primary btn-sm" onClick={() => setModal({})}>+ Adicionar mecânico</button>
-      </div>
-
-      {mecanicos.length === 0
-        ? <p style={{ color:"var(--texto-sub,#555)", fontSize:14, fontStyle:"italic" }}>Nenhum mecânico cadastrado.</p>
-        : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
-            {mecanicos.map((m, idx) => {
-              const osMec = ordens.filter(o => o.mecanico === m.nome);
-              const osMes = osMec.filter(o => {
-                const d = o.criadoEm?.toDate ? o.criadoEm.toDate() : new Date(o.criadoEm||0);
-                return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear();
-              });
-              const faturado = osMec.reduce((a,o) => a+(Number(o.valor)||0), 0);
-              const cor = cores[idx % cores.length];
-              const iniciais = m.nome.split(" ").map(p=>p[0]).join("").toUpperCase().slice(0,2);
-              return (
-                <div key={m.id} style={{ background:"var(--cinza-escuro,#1a1a1a)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:14, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-                  {/* Topo colorido */}
-                  <div style={{ background:cor, padding:"20px 20px 14px", display:"flex", alignItems:"center", gap:14 }}>
-                    <div style={{ width:52, height:52, borderRadius:12, background:"rgba(0,0,0,0.2)", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:700, flexShrink:0 }}>{iniciais}</div>
-                    <div>
-                      <div style={{ color:"#fff", fontSize:16, fontWeight:700, lineHeight:1.2 }}>{m.nome}</div>
-                      {m.especialidade && <div style={{ color:"rgba(255,255,255,0.8)", fontSize:12, marginTop:3 }}>🔧 {m.especialidade}</div>}
-                      {m.telefone && <div style={{ color:"rgba(255,255,255,0.8)", fontSize:12, marginTop:2 }}>📱 {m.telefone}</div>}
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:1, background:"var(--borda,#2a2a2a)" }}>
-                    {[
-                      { label:"OS Total", valor: osMec.length, cor:"var(--texto,#fff)" },
-                      { label:"Este Mês", valor: osMes.length, cor:"#38b2ac" },
-                      { label:"Faturado", valor: formatarMoeda(faturado), cor:"#48bb78" },
-                    ].map((s,i) => (
-                      <div key={i} style={{ background:"var(--cinza-escuro,#1a1a1a)", padding:"12px 8px", textAlign:"center" }}>
-                        <div style={{ color:s.cor, fontSize:i===2?13:18, fontWeight:700, lineHeight:1.2 }}>{s.valor}</div>
-                        <div style={{ color:"var(--texto-sub,#666)", fontSize:10, textTransform:"uppercase", letterSpacing:"0.04em", marginTop:3 }}>{s.label}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Ações */}
-                  <div style={{ display:"flex", justifyContent:"flex-end", gap:8, padding:"10px 14px", borderTop:"1px solid var(--borda,#2a2a2a)" }}>
-                    <button className="btn-icon" title="Editar" onClick={() => setModal(m)}>✏️</button>
-                    <button className="btn-icon" title="Excluir" onClick={() => excluir(m.id)}>🗑️</button>
-                  </div>
+    <div className="aba-content">
+      <div className="aba-header-row"><h2>Equipe</h2><button className="btn-primary btn-sm" onClick={()=>setModal({})}>+ Adicionar mecanico</button></div>
+      {mecanicos.length===0 ? <div className="vazio"><p>Nenhum mecanico cadastrado.</p></div> : (
+        <div className="equipe-grid">
+          {mecanicos.map(m => {
+            const osMec = ordens.filter(o => o.mecanico===m.nome);
+            const hoje = new Date();
+            const totalMes = osMec.filter(o => { const d=o.criadoEm?.toDate?o.criadoEm.toDate():new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
+            return (
+              <div key={m.id} className="mecanico-card">
+                <div className="mecanico-avatar">{m.nome.charAt(0).toUpperCase()}</div>
+                <div className="mecanico-info"><strong>{m.nome}</strong>{m.especialidade&&<span>{m.especialidade}</span>}{m.telefone&&<span>{m.telefone}</span>}</div>
+                <div className="mecanico-stats">
+                  <div><span className="stat-num">{osMec.length}</span><span>OS total</span></div>
+                  <div><span className="stat-num azul">{totalMes.length}</span><span>este mes</span></div>
+                  <div><span className="stat-num verde">{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span><span>faturado</span></div>
                 </div>
-              );
-            })}
-          </div>
-        )
-      }
-      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={() => setModal(null)} />}
+                <div className="tabela-acoes" style={{marginTop:".5rem"}}>
+                  <button className="btn-icon" onClick={()=>setModal(m)}>✏️</button>
+                  <button className="btn-icon" onClick={()=>excluir(m.id)}>🗑️</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {modal && <ModalMecanico dados={modal} onSalvar={salvar} onFechar={()=>setModal(null)} />}
     </div>
   );
 }
