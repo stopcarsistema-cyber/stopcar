@@ -379,6 +379,31 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
     setMostrarSugestoes(false);
   }
 
+  const [servicosCustom, setServicosCustom] = useState([]);
+  const [modalServico, setModalServico] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoPreco, setNovoPreco] = useState("");
+  const todosServicos = [...SERVICOS, ...servicosCustom];
+
+  async function salvarNovoServico() {
+    if (!novoNome.trim()) return;
+    try {
+      const ref = await addDoc(collection(db, "servicosExtras"), {
+        id: "custom_" + Date.now(),
+        nome: novoNome.trim(),
+        preco: Number(novoPreco) || 0,
+        criadoEm: serverTimestamp(),
+      });
+      const novo = { id: ref.id, nome: novoNome.trim(), preco: Number(novoPreco) || 0 };
+      setServicosCustom(prev => [...prev, novo]);
+      set("servico", ref.id);
+      if (!form.valor) set("valor", novo.preco);
+      setNovoNome("");
+      setNovoPreco("");
+      setModalServico(false);
+    } catch(e) { alert("Erro: " + e.message); }
+  }
+
   const statusCheck = { ok: "OK", atencao: "Atencao", urgente: "Urgente", na: "—" };
 
   return (
@@ -423,12 +448,28 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
               <label>KM Entrada<input value={form.km} onChange={e => set("km", e.target.value)} placeholder="85000" /></label>
               <label>Prox. Revisao KM<input value={form.proxRevisaoKm} onChange={e => set("proxRevisaoKm", e.target.value)} placeholder="90000" /></label>
-              <label>Servico
-                <select value={form.servico} onChange={e => { set("servico", e.target.value); if (!form.valor) set("valor", precoServico(e.target.value)); }}>
-                  <option value="">Selecione...</option>
-                  {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                </select>
-              </label>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <span style={{fontSize:"0.75rem",fontWeight:600,textTransform:"uppercase",color:"var(--texto-sub,#888)"}}>Servico</span>
+                <div style={{display:"flex",gap:6}}>
+                  <select value={form.servico} style={{flex:1}} onChange={e=>{set("servico",e.target.value);const s=todosServicos.find(x=>x.id===e.target.value);if(!form.valor&&s)set("valor",s.preco);}}>
+                    <option value="">Selecione...</option>
+                    <optgroup label="Padrão">{SERVICOS.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</optgroup>
+                    {servicosCustom.length>0&&<optgroup label="Personalizados">{servicosCustom.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</optgroup>}
+                  </select>
+                  <button type="button" onClick={()=>setModalServico(v=>!v)} style={{background:"#e53e3e",color:"#fff",border:"none",borderRadius:8,width:36,height:36,fontSize:22,fontWeight:700,cursor:"pointer",flexShrink:0}}>+</button>
+                </div>
+                {modalServico&&(
+                  <div style={{background:"#111",border:"1px solid #e53e3e55",borderRadius:10,padding:12,marginTop:4,display:"flex",flexDirection:"column",gap:8}}>
+                    <span style={{color:"#e53e3e",fontSize:11,fontWeight:700,textTransform:"uppercase"}}>Novo Serviço</span>
+                    <input value={novoNome} onChange={e=>setNovoNome(e.target.value)} placeholder="Nome do serviço"/>
+                    <input value={novoPreco} onChange={e=>setNovoPreco(e.target.value)} placeholder="Preço R$" type="number"/>
+                    <div style={{display:"flex",gap:8}}>
+                      <button type="button" onClick={salvarNovoServico} style={{flex:1,background:"#e53e3e",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontWeight:700,cursor:"pointer"}}>Salvar</button>
+                      <button type="button" onClick={()=>setModalServico(false)} style={{flex:1,background:"#2a2a2a",color:"#888",border:"none",borderRadius:8,padding:"8px",cursor:"pointer"}}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <label>Mecanico
                 <select value={form.mecanico} onChange={e => set("mecanico", e.target.value)}>
                   <option value="">Selecione...</option>
