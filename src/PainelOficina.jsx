@@ -431,11 +431,23 @@ function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprim
               <p style={{ color:"var(--texto-sub,#888)", fontSize:12, margin:"4px 0 0" }}>{formatarData(os.criadoEm)}</p>
             </div>
           </div>
-          {(os.obs || os.pecas) && (
+          {os.obs && (
             <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
-              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>📝 Descrição / Peças</p>
-              {os.obs && <p style={{ color:"var(--texto,#ddd)", fontSize:13, margin:"0 0 6px", lineHeight:1.6 }}>{os.obs}</p>}
-              {os.pecas && <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:0 }}>🔩 {os.pecas}</p>}
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>📝 Descrição</p>
+              <p style={{ color:"var(--texto,#ddd)", fontSize:13, lineHeight:1.8, margin:0, whiteSpace:"pre-wrap" }}>{os.obs}</p>
+            </div>
+          )}
+          {os.pecas && (
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>🔩 Peças Utilizadas</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {os.pecas.split("\n").filter(l => l.trim()).map((linha, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"baseline", gap:8, padding:"6px 10px", background:"var(--cinza-escuro,#0d0d0d)", borderRadius:7, border:"1px solid var(--borda,#222)" }}>
+                    <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>{i+1}.</span>
+                    <span style={{ color:"var(--texto,#ddd)", fontSize:13 }}>{linha.replace(/^\d+\s*[-.)\s]*/, "").trim()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {checkItens.length > 0 && (
