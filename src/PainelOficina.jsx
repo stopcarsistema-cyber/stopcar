@@ -466,6 +466,94 @@ function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprim
   );
 }
 
+function PecasList({ value, onChange }) {
+  // Parse existing value into array of items
+  const parseItens = (v) => {
+    if (!v) return [""];
+    // If it's already a numbered list format, parse it
+    const linhas = v.split("\n").map(l => l.replace(/^\d+\s*[-.)\s]*/, "").trim());
+    return linhas.length > 0 ? linhas : [""];
+  };
+
+  const [itens, setItens] = useState(() => parseItens(value));
+
+  function updateParent(novosItens) {
+    const filtrados = novosItens.filter((_, i) => i < novosItens.length);
+    const texto = filtrados.map((item, i) => `${i + 1} - ${item}`).join("\n");
+    onChange(texto);
+  }
+
+  function handleChange(i, val) {
+    const novos = [...itens];
+    novos[i] = val;
+    setItens(novos);
+    updateParent(novos);
+  }
+
+  function handleKeyDown(e, i) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const novos = [...itens];
+      novos.splice(i + 1, 0, "");
+      setItens(novos);
+      updateParent(novos);
+      setTimeout(() => {
+        const inputs = document.querySelectorAll(".pecas-input");
+        if (inputs[i + 1]) inputs[i + 1].focus();
+      }, 10);
+    }
+    if (e.key === "Backspace" && itens[i] === "" && itens.length > 1) {
+      e.preventDefault();
+      const novos = itens.filter((_, idx) => idx !== i);
+      setItens(novos);
+      updateParent(novos);
+      setTimeout(() => {
+        const inputs = document.querySelectorAll(".pecas-input");
+        if (inputs[i - 1]) inputs[i - 1].focus();
+      }, 10);
+    }
+  }
+
+  function addItem() {
+    const novos = [...itens, ""];
+    setItens(novos);
+    updateParent(novos);
+    setTimeout(() => {
+      const inputs = document.querySelectorAll(".pecas-input");
+      if (inputs[novos.length - 1]) inputs[novos.length - 1].focus();
+    }, 10);
+  }
+
+  function removeItem(i) {
+    if (itens.length === 1) { setItens([""]); onChange(""); return; }
+    const novos = itens.filter((_, idx) => idx !== i);
+    setItens(novos);
+    updateParent(novos);
+  }
+
+  return (
+    <div style={{ background:"var(--cinza-escuro,#111)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:8, padding:"10px 12px", display:"flex", flexDirection:"column", gap:6 }}>
+      {itens.map((item, i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, minWidth:22, textAlign:"right" }}>{i + 1}.</span>
+          <input
+            className="pecas-input"
+            value={item}
+            onChange={e => handleChange(i, e.target.value)}
+            onKeyDown={e => handleKeyDown(e, i)}
+            placeholder={i === 0 ? "Ex: Óleo 15W40..." : "Item..."}
+            style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"var(--texto,#fff)", fontSize:13, padding:"2px 0" }}
+          />
+          {itens.length > 1 && (
+            <button type="button" onClick={() => removeItem(i)} style={{ background:"none", border:"none", color:"#555", cursor:"pointer", fontSize:14, padding:"0 2px" }}>✕</button>
+          )}
+        </div>
+      ))}
+      <button type="button" onClick={addItem} style={{ background:"none", border:"1px dashed var(--borda,#2a2a2a)", borderRadius:6, color:"var(--texto-sub,#666)", fontSize:12, padding:"4px 8px", cursor:"pointer", marginTop:2, textAlign:"left" }}>+ Adicionar item</button>
+    </div>
+  );
+}
+
 function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
@@ -609,7 +697,10 @@ function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
               </label>
               <label>Prox. revisao recomendada<input value={form.proxRevisao} onChange={e => set("proxRevisao", e.target.value)} placeholder="Ex: 6 meses ou 5.000 km" /></label>
               <label className="span2">Descricao / Observacoes<textarea value={form.obs} onChange={e => set("obs", e.target.value)} rows={2} placeholder="Descreva o servico..." /></label>
-              <label className="span2">Pecas utilizadas<textarea value={form.pecas} onChange={e => set("pecas", e.target.value)} rows={2} placeholder="Ex: Filtro de oleo, vela de ignicao..." /></label>
+              <div className="span2" style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <span style={{ fontSize:"0.75rem", fontWeight:600, textTransform:"uppercase", color:"var(--texto-sub,#888)" }}>Peças Utilizadas</span>
+                <PecasList value={form.pecas} onChange={v => set("pecas", v)} />
+              </div>
             </div>
           )}
           {abaModal === "checklist" && (
