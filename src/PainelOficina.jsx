@@ -837,7 +837,7 @@ function AbaHistorico({ ordens }) {
               return (
                 <button key={p} className="placa-item" onClick={() => { setPlacaSel(p); setBusca(p); }}>
                   <span className="placa-tag">{p}</span>
-                  <span className="placa-info">{os[0]?.modelo} · {os[0]?.cliente}</span>
+                  <span className="placa-info" style={{ color:"var(--texto, #ddd)" }}>{os[0]?.modelo} · {os[0]?.cliente}</span>
                   <span className="placa-count">{os.length} OS</span>
                 </button>
               );
