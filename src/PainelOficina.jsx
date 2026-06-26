@@ -158,93 +158,148 @@ function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
   const faturamentoMes = ordensMes.filter(o => o.status === "concluido" || o.status === "entregue").reduce((a, o) => a + (Number(o.valor) || 0), 0);
   const faturamentoHoje = ordensHoje.filter(o => o.status === "concluido" || o.status === "entregue").reduce((a, o) => a + (Number(o.valor) || 0), 0);
   const despesasMes = financeiro.filter(f => f.tipo === "despesa" && toDate(f.criadoEm) >= inicioMes).reduce((a, f) => a + (Number(f.valor) || 0), 0);
+  const lucroMes = faturamentoMes - despesasMes;
   const estoqueBaixo = estoque.filter(p => p.quantidade <= p.minimo);
   const pendentePagamento = ordens.filter(o => o.pagamento === "Pendente" || o.pagamento === "Parcial");
   const osParadas = ordens.filter(o => {
     if (o.status === "entregue" || o.status === "concluido") return false;
     return (hoje - toDate(o.criadoEm)) / (1000 * 60 * 60 * 24) > 3;
-  });
+  }).sort((a, b) => toDate(a.criadoEm) - toDate(b.criadoEm));
   const contagemServicos = {};
   ordens.forEach(o => { if (o.servico) contagemServicos[o.servico] = (contagemServicos[o.servico] || 0) + 1; });
   const topServicos = Object.entries(contagemServicos).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxServico = topServicos[0]?.[1] || 1;
+  const nomeMes = hoje.toLocaleString("pt-BR", { month: "long", year: "numeric" });
 
-  const cards = [
-    { label: "OS Hoje",           valor: ordensHoje.length,                     icon: "📋", cor: "#e53e3e",  aba: 1 },
-    { label: "Em Andamento",      valor: emAndamento.length,                    icon: "🔧", cor: "#ed8936",  aba: 1 },
-    { label: "Aguardando",        valor: aguardando.length,                     icon: "⏳", cor: "#ecc94b",  aba: 1 },
-    { label: "OS no Mês",         valor: ordensMes.length,                      icon: "📅", cor: "#48bb78",  aba: 1 },
-    { label: "Faturamento Hoje",  valor: formatarMoeda(faturamentoHoje),        icon: "💰", cor: "#48bb78",  aba: 3 },
-    { label: "Faturamento do Mês",valor: formatarMoeda(faturamentoMes),         icon: "📈", cor: "#38b2ac",  aba: 3 },
-    { label: "Despesas do Mês",   valor: formatarMoeda(despesasMes),            icon: "📉", cor: "#e53e3e",  aba: 3 },
-    { label: "Lucro do Mês",      valor: formatarMoeda(faturamentoMes - despesasMes), icon: "🏆", cor: (faturamentoMes - despesasMes) >= 0 ? "#48bb78" : "#e53e3e", aba: 3 },
-  ];
+  const card = (cor, icon, valor, label, aba) => (
+    <div onClick={() => setAba(aba)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"16px 18px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden", cursor:"pointer", transition:"border-color 0.15s, transform 0.1s" }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = cor; e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.transform = "translateY(0)"; }}>
+      <div style={{ width:40, height:40, borderRadius:10, background:cor+"20", color:cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+      <div>
+        <div style={{ color:"#fff", fontSize:19, fontWeight:700, lineHeight:1.2 }}>{valor}</div>
+        <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</div>
+      </div>
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:cor }} />
+    </div>
+  );
+
+  const S = { padding:"24px", maxWidth:1200, margin:"0 auto", fontFamily:"'Inter','Segoe UI',sans-serif", display:"flex", flexDirection:"column", gap:16 };
+  const cardBox = { background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 };
+  const secTitle = { color:"#fff", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 14px" };
 
   return (
-    <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
-      {/* Título */}
-      <div style={{ display:"flex", alignItems:"baseline", gap:12, borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24 }}>
-        <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Dashboard</h2>
-        <span style={{ color:"#888", fontSize:13 }}>Visão geral da oficina</span>
+    <div style={S}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16 }}>
+        <div>
+          <h2 style={{ color:"#fff", fontSize:22, fontWeight:700, margin:"0 0 2px" }}>Dashboard</h2>
+          <span style={{ color:"#888", fontSize:13 }}>{hoje.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" })}</span>
+        </div>
       </div>
 
       {/* Alertas */}
       {(estoqueBaixo.length > 0 || osParadas.length > 0 || pendentePagamento.length > 0) && (
-        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
-          {estoqueBaixo.length > 0 && <div style={{ background:"#e53e3e22", border:"1px solid #e53e3e55", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13 }}>⚠️ {estoqueBaixo.length} item(ns) com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</div>}
-          {osParadas.length > 0 && <div style={{ background:"#ecc94b22", border:"1px solid #ecc94b55", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13 }}>⏰ {osParadas.length} OS parada(s) há mais de 3 dias</div>}
-          {pendentePagamento.length > 0 && <div style={{ background:"#4299e122", border:"1px solid #4299e155", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13 }}>💳 {pendentePagamento.length} OS com pagamento pendente</div>}
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          {estoqueBaixo.length > 0 && (
+            <div onClick={() => setAba(6)} style={{ background:"#e53e3e15", border:"1px solid #e53e3e44", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>⚠️</span>
+              <span style={{ flex:1 }}><strong>{estoqueBaixo.length} item(ns)</strong> com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver estoque →</span>
+            </div>
+          )}
+          {osParadas.length > 0 && (
+            <div onClick={() => setAba(1)} style={{ background:"#ecc94b15", border:"1px solid #ecc94b44", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>⏰</span>
+              <span style={{ flex:1 }}><strong>{osParadas.length} OS</strong> parada(s) há mais de 3 dias</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver OS →</span>
+            </div>
+          )}
+          {pendentePagamento.length > 0 && (
+            <div onClick={() => setAba(3)} style={{ background:"#4299e115", border:"1px solid #4299e144", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>💳</span>
+              <span style={{ flex:1 }}><strong>{pendentePagamento.length} OS</strong> com pagamento pendente</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver financeiro →</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Grid de cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))", gap:14, marginBottom:24 }}>
-        {cards.map((c, i) => (
-          <div key={i} onClick={() => setAba(c.aba)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden", cursor:"pointer", transition:"border-color 0.15s, transform 0.1s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = c.cor; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.transform = "translateY(0)"; }}>
-            <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
-            <div>
-              <div style={{ color:"#fff", fontSize:20, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
-              <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{c.label}</div>
-            </div>
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor, borderRadius:"0 0 12px 12px" }} />
-          </div>
-        ))}
+      {/* Cards operacionais */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12 }}>
+        {card("#e53e3e", "📋", ordensHoje.length,         "OS hoje",        1)}
+        {card("#ed8936", "🔧", emAndamento.length,         "Em andamento",   1)}
+        {card("#ecc94b", "⏳", aguardando.length,          "Aguardando",     1)}
+        {card("#48bb78", "📅", ordensMes.length,           "OS no mês",      1)}
       </div>
 
-      {/* Colunas inferiores */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:16 }}>
-        {/* Top Serviços */}
-        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#e53e3e"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
-          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🏅 Top Serviços</h3>
+      {/* Cards financeiros */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12 }}>
+        {card("#48bb78", "💰", formatarMoeda(faturamentoHoje),  "Faturamento hoje",   3)}
+        {card("#38b2ac", "📈", formatarMoeda(faturamentoMes),   "Faturamento do mês", 3)}
+        {card("#e53e3e", "📉", formatarMoeda(despesasMes),      "Despesas do mês",    3)}
+        {card(lucroMes >= 0 ? "#48bb78" : "#e53e3e", "🏆", formatarMoeda(lucroMes), "Lucro do mês", 3)}
+      </div>
+
+      {/* Linha inferior */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:14 }}>
+
+        {/* Top Serviços com barras */}
+        <div style={cardBox} onClick={() => setAba(1)}>
+          <h3 style={secTitle}>🏅 Top Serviços</h3>
           {topServicos.length === 0
             ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum serviço ainda.</p>
             : topServicos.map(([id, qtd], i) => (
-              <div key={id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-                <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, width:26 }}>#{i+1}</span>
-                <span style={{ color:"#ddd", fontSize:13, flex:1 }}>{nomeServico(id)}</span>
-                <span style={{ background:"#e53e3e", color:"#fff", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20 }}>{qtd}x</span>
+              <div key={id} style={{ marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:"#ddd", fontSize:13 }}><span style={{ color:"#e53e3e", fontWeight:700, marginRight:6 }}>#{i+1}</span>{nomeServico(id)}</span>
+                  <span style={{ color:"#888", fontSize:12 }}>{qtd}x</span>
+                </div>
+                <div style={{ height:5, background:"#222", borderRadius:99, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${(qtd/maxServico)*100}%`, background:"#e53e3e", borderRadius:99 }} />
+                </div>
               </div>
             ))
           }
         </div>
 
-        {/* Na oficina agora */}
-        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#ed8936"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
-          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🚗 Na Oficina Agora</h3>
-          {emAndamento.length === 0
-            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum carro em andamento.</p>
-            : emAndamento.map(os => (
-              <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{os.modelo || "Veículo"}</div>
-                  <div style={{ color:"#888", fontSize:11, marginTop:2 }}>{os.placa || ""}{os.mecanico ? ` · ${os.mecanico}` : ""}</div>
-                </div>
-                <span style={{ background:"#ed893622", color:"#ed8936", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20, border:"1px solid #ed893655" }}>Em andamento</span>
-              </div>
-            ))
+        {/* OS paradas */}
+        <div style={cardBox} onClick={() => setAba(1)}>
+          <h3 style={secTitle}>⏰ OS Aguardando — Mais Antigas</h3>
+          {osParadas.length === 0 && aguardando.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhuma OS parada.</p>
+            : [...osParadas, ...aguardando.filter(o => !osParadas.find(p => p.id === o.id))].slice(0, 5).map(os => {
+                const dias = Math.floor((hoje - toDate(os.criadoEm)) / (1000 * 60 * 60 * 24));
+                return (
+                  <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #222" }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{os.placa} · {os.cliente}</div>
+                      <div style={{ color:"#888", fontSize:11, marginTop:2 }}>{nomeServico(os.servico)}</div>
+                    </div>
+                    <span style={{ background: dias > 3 ? "#e53e3e22" : "#ecc94b22", color: dias > 3 ? "#fc8181" : "#f6e05e", border:`1px solid ${dias > 3 ? "#e53e3e44" : "#ecc94b44"}`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{dias}d</span>
+                  </div>
+                );
+              })
           }
         </div>
+
+        {/* Resumo financeiro */}
+        <div style={cardBox}>
+          <h3 style={secTitle}>💵 Resumo — {nomeMes}</h3>
+          {[
+            { label:"Receita total", valor: formatarMoeda(faturamentoMes), cor:"#48bb78" },
+            { label:"Despesas",      valor: formatarMoeda(despesasMes),    cor:"#fc8181" },
+            { label:"Saldo",         valor: formatarMoeda(lucroMes),       cor: lucroMes >= 0 ? "#48bb78" : "#fc8181" },
+            { label:"OS realizadas", valor: ordensMes.length + " OS",       cor:"#888" },
+            { label:"Pend. receber", valor: formatarMoeda(pendentePagamento.reduce((a,o)=>a+(Number(o.valor)||0),0)), cor:"#63b3ed" },
+          ].map((item, i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom: i < 4 ? "1px solid #222" : "none" }}>
+              <span style={{ color:"#888", fontSize:13 }}>{item.label}</span>
+              <span style={{ color:item.cor, fontWeight:700, fontSize:14 }}>{item.valor}</span>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
