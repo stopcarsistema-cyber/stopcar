@@ -99,7 +99,6 @@ export default function PainelOficina({ usuario }) {
   const [ordens, setOrdens] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [estoque, setEstoque] = useState([]);
-  const [servicosExtras, setServicosExtras] = useState([]);
   const [mecanicos, setMecanicos] = useState([]);
   const [financeiro, setFinanceiro] = useState([]);
 
@@ -115,8 +114,6 @@ export default function PainelOficina({ usuario }) {
         setMecanicos(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
       onSnapshot(query(collection(db, "financeiro"), orderBy("criadoEm", "desc")), snap =>
         setFinanceiro(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
-      onSnapshot(collection(db, "servicosExtras"), snap =>
-        setServicosExtras(snap.docs.map(d => ({ ...d.data(), id: d.id })))),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
@@ -139,7 +136,7 @@ export default function PainelOficina({ usuario }) {
       </header>
       <main className="painel-main">
         {aba === 0 && <AbaDashboard ordens={ordens} financeiro={financeiro} estoque={estoque} setAba={setAba} />}
-        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} />}
+        {aba === 1 && <AbaOS ordens={ordens} mecanicos={mecanicos} clientes={clientes} />}
         {aba === 2 && <AbaHistorico ordens={ordens} />}
         {aba === 3 && <AbaFinanceiro financeiro={financeiro} ordens={ordens} />}
         {aba === 4 && <AbaClientes clientes={clientes} ordens={ordens} />}
@@ -161,100 +158,156 @@ function AbaDashboard({ ordens, financeiro, estoque, setAba }) {
   const faturamentoMes = ordensMes.filter(o => o.status === "concluido" || o.status === "entregue").reduce((a, o) => a + (Number(o.valor) || 0), 0);
   const faturamentoHoje = ordensHoje.filter(o => o.status === "concluido" || o.status === "entregue").reduce((a, o) => a + (Number(o.valor) || 0), 0);
   const despesasMes = financeiro.filter(f => f.tipo === "despesa" && toDate(f.criadoEm) >= inicioMes).reduce((a, f) => a + (Number(f.valor) || 0), 0);
+  const lucroMes = faturamentoMes - despesasMes;
   const estoqueBaixo = estoque.filter(p => p.quantidade <= p.minimo);
   const pendentePagamento = ordens.filter(o => o.pagamento === "Pendente" || o.pagamento === "Parcial");
   const osParadas = ordens.filter(o => {
     if (o.status === "entregue" || o.status === "concluido") return false;
     return (hoje - toDate(o.criadoEm)) / (1000 * 60 * 60 * 24) > 3;
-  });
+  }).sort((a, b) => toDate(a.criadoEm) - toDate(b.criadoEm));
   const contagemServicos = {};
   ordens.forEach(o => { if (o.servico) contagemServicos[o.servico] = (contagemServicos[o.servico] || 0) + 1; });
   const topServicos = Object.entries(contagemServicos).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const maxServico = topServicos[0]?.[1] || 1;
+  const nomeMes = hoje.toLocaleString("pt-BR", { month: "long", year: "numeric" });
 
-  const cards = [
-    { label: "OS Hoje",           valor: ordensHoje.length,                     icon: "📋", cor: "#e53e3e",  aba: 1 },
-    { label: "Em Andamento",      valor: emAndamento.length,                    icon: "🔧", cor: "#ed8936",  aba: 1 },
-    { label: "Aguardando",        valor: aguardando.length,                     icon: "⏳", cor: "#ecc94b",  aba: 1 },
-    { label: "OS no Mês",         valor: ordensMes.length,                      icon: "📅", cor: "#48bb78",  aba: 1 },
-    { label: "Faturamento Hoje",  valor: formatarMoeda(faturamentoHoje),        icon: "💰", cor: "#48bb78",  aba: 3 },
-    { label: "Faturamento do Mês",valor: formatarMoeda(faturamentoMes),         icon: "📈", cor: "#38b2ac",  aba: 3 },
-    { label: "Despesas do Mês",   valor: formatarMoeda(despesasMes),            icon: "📉", cor: "#e53e3e",  aba: 3 },
-    { label: "Lucro do Mês",      valor: formatarMoeda(faturamentoMes - despesasMes), icon: "🏆", cor: (faturamentoMes - despesasMes) >= 0 ? "#48bb78" : "#e53e3e", aba: 3 },
-  ];
+  const card = (cor, icon, valor, label, aba) => (
+    <div onClick={() => setAba(aba)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"16px 18px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden", cursor:"pointer", transition:"border-color 0.15s, transform 0.1s" }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = cor; e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.transform = "translateY(0)"; }}>
+      <div style={{ width:40, height:40, borderRadius:10, background:cor+"20", color:cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+      <div>
+        <div style={{ color:"#fff", fontSize:19, fontWeight:700, lineHeight:1.2 }}>{valor}</div>
+        <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{label}</div>
+      </div>
+      <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:cor }} />
+    </div>
+  );
+
+  const S = { padding:"24px", maxWidth:1200, margin:"0 auto", fontFamily:"'Inter','Segoe UI',sans-serif", display:"flex", flexDirection:"column", gap:16 };
+  const cardBox = { background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 };
+  const secTitle = { color:"#fff", fontSize:12, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em", margin:"0 0 14px" };
 
   return (
-    <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
-      {/* Título */}
-      <div style={{ display:"flex", alignItems:"baseline", gap:12, borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24 }}>
-        <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Dashboard</h2>
-        <span style={{ color:"#888", fontSize:13 }}>Visão geral da oficina</span>
+    <div style={S}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16 }}>
+        <div>
+          <h2 style={{ color:"#fff", fontSize:22, fontWeight:700, margin:"0 0 2px" }}>Dashboard</h2>
+          <span style={{ color:"#888", fontSize:13 }}>{hoje.toLocaleDateString("pt-BR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" })}</span>
+        </div>
       </div>
 
       {/* Alertas */}
       {(estoqueBaixo.length > 0 || osParadas.length > 0 || pendentePagamento.length > 0) && (
-        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:24 }}>
-          {estoqueBaixo.length > 0 && <div style={{ background:"#e53e3e22", border:"1px solid #e53e3e55", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13 }}>⚠️ {estoqueBaixo.length} item(ns) com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</div>}
-          {osParadas.length > 0 && <div style={{ background:"#ecc94b22", border:"1px solid #ecc94b55", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13 }}>⏰ {osParadas.length} OS parada(s) há mais de 3 dias</div>}
-          {pendentePagamento.length > 0 && <div style={{ background:"#4299e122", border:"1px solid #4299e155", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13 }}>💳 {pendentePagamento.length} OS com pagamento pendente</div>}
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          {estoqueBaixo.length > 0 && (
+            <div onClick={() => setAba(6)} style={{ background:"#e53e3e15", border:"1px solid #e53e3e44", borderRadius:8, padding:"10px 14px", color:"#fc8181", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>⚠️</span>
+              <span style={{ flex:1 }}><strong>{estoqueBaixo.length} item(ns)</strong> com estoque baixo: {estoqueBaixo.map(p => p.nome).join(", ")}</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver estoque →</span>
+            </div>
+          )}
+          {osParadas.length > 0 && (
+            <div onClick={() => setAba(1)} style={{ background:"#ecc94b15", border:"1px solid #ecc94b44", borderRadius:8, padding:"10px 14px", color:"#f6e05e", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>⏰</span>
+              <span style={{ flex:1 }}><strong>{osParadas.length} OS</strong> parada(s) há mais de 3 dias</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver OS →</span>
+            </div>
+          )}
+          {pendentePagamento.length > 0 && (
+            <div onClick={() => setAba(3)} style={{ background:"#4299e115", border:"1px solid #4299e144", borderRadius:8, padding:"10px 14px", color:"#63b3ed", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:16 }}>💳</span>
+              <span style={{ flex:1 }}><strong>{pendentePagamento.length} OS</strong> com pagamento pendente</span>
+              <span style={{ fontSize:11, opacity:0.7 }}>Ver financeiro →</span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Grid de cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))", gap:14, marginBottom:24 }}>
-        {cards.map((c, i) => (
-          <div key={i} onClick={() => setAba(c.aba)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden", cursor:"pointer", transition:"border-color 0.15s, transform 0.1s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = c.cor; e.currentTarget.style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.transform = "translateY(0)"; }}>
-            <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
-            <div>
-              <div style={{ color:"#fff", fontSize:20, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
-              <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{c.label}</div>
-            </div>
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor, borderRadius:"0 0 12px 12px" }} />
-          </div>
-        ))}
+      {/* Cards operacionais */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12 }}>
+        {card("#e53e3e", "📋", ordensHoje.length,         "OS hoje",        1)}
+        {card("#ed8936", "🔧", emAndamento.length,         "Em andamento",   1)}
+        {card("#ecc94b", "⏳", aguardando.length,          "Aguardando",     1)}
+        {card("#48bb78", "📅", ordensMes.length,           "OS no mês",      1)}
       </div>
 
-      {/* Colunas inferiores */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:16 }}>
-        {/* Top Serviços */}
-        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#e53e3e"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
-          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🏅 Top Serviços</h3>
+      {/* Cards financeiros */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))", gap:12 }}>
+        {card("#48bb78", "💰", formatarMoeda(faturamentoHoje),  "Faturamento hoje",   3)}
+        {card("#38b2ac", "📈", formatarMoeda(faturamentoMes),   "Faturamento do mês", 3)}
+        {card("#e53e3e", "📉", formatarMoeda(despesasMes),      "Despesas do mês",    3)}
+        {card(lucroMes >= 0 ? "#48bb78" : "#e53e3e", "🏆", formatarMoeda(lucroMes), "Lucro do mês", 3)}
+      </div>
+
+      {/* Linha inferior */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:14 }}>
+
+        {/* Top Serviços com barras */}
+        <div style={cardBox} onClick={() => setAba(1)}>
+          <h3 style={secTitle}>🏅 Top Serviços</h3>
           {topServicos.length === 0
             ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum serviço ainda.</p>
             : topServicos.map(([id, qtd], i) => (
-              <div key={id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-                <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, width:26 }}>#{i+1}</span>
-                <span style={{ color:"#ddd", fontSize:13, flex:1 }}>{nomeServico(id)}</span>
-                <span style={{ background:"#e53e3e", color:"#fff", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20 }}>{qtd}x</span>
+              <div key={id} style={{ marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                  <span style={{ color:"#ddd", fontSize:13 }}><span style={{ color:"#e53e3e", fontWeight:700, marginRight:6 }}>#{i+1}</span>{nomeServico(id)}</span>
+                  <span style={{ color:"#888", fontSize:12 }}>{qtd}x</span>
+                </div>
+                <div style={{ height:5, background:"#222", borderRadius:99, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${(qtd/maxServico)*100}%`, background:"#e53e3e", borderRadius:99 }} />
+                </div>
               </div>
             ))
           }
         </div>
 
-        {/* Na oficina agora */}
-        <div onClick={() => setAba(1)} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:22, cursor:"pointer", transition:"border-color 0.15s" }} onMouseEnter={e=>e.currentTarget.style.borderColor="#ed8936"} onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
-          <h3 style={{ color:"#fff", fontSize:13, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 16px 0" }}>🚗 Na Oficina Agora</h3>
-          {emAndamento.length === 0
-            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhum carro em andamento.</p>
-            : emAndamento.map(os => (
-              <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{os.modelo || "Veículo"}</div>
-                  <div style={{ color:"#888", fontSize:11, marginTop:2 }}>{os.placa || ""}{os.mecanico ? ` · ${os.mecanico}` : ""}</div>
-                </div>
-                <span style={{ background:"#ed893622", color:"#ed8936", fontSize:11, fontWeight:600, padding:"2px 10px", borderRadius:20, border:"1px solid #ed893655" }}>Em andamento</span>
-              </div>
-            ))
+        {/* OS paradas */}
+        <div style={cardBox} onClick={() => setAba(1)}>
+          <h3 style={secTitle}>⏰ OS Aguardando — Mais Antigas</h3>
+          {osParadas.length === 0 && aguardando.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic" }}>Nenhuma OS parada.</p>
+            : [...osParadas, ...aguardando.filter(o => !osParadas.find(p => p.id === o.id))].slice(0, 5).map(os => {
+                const dias = Math.floor((hoje - toDate(os.criadoEm)) / (1000 * 60 * 60 * 24));
+                return (
+                  <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #222" }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{os.placa} · {os.cliente}</div>
+                      <div style={{ color:"#888", fontSize:11, marginTop:2 }}>{nomeServico(os.servico)}</div>
+                    </div>
+                    <span style={{ background: dias > 3 ? "#e53e3e22" : "#ecc94b22", color: dias > 3 ? "#fc8181" : "#f6e05e", border:`1px solid ${dias > 3 ? "#e53e3e44" : "#ecc94b44"}`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:600, whiteSpace:"nowrap" }}>{dias}d</span>
+                  </div>
+                );
+              })
           }
         </div>
+
+        {/* Resumo financeiro */}
+        <div style={cardBox}>
+          <h3 style={secTitle}>💵 Resumo — {nomeMes}</h3>
+          {[
+            { label:"Receita total", valor: formatarMoeda(faturamentoMes), cor:"#48bb78" },
+            { label:"Despesas",      valor: formatarMoeda(despesasMes),    cor:"#fc8181" },
+            { label:"Saldo",         valor: formatarMoeda(lucroMes),       cor: lucroMes >= 0 ? "#48bb78" : "#fc8181" },
+            { label:"OS realizadas", valor: ordensMes.length + " OS",       cor:"#888" },
+            { label:"Pend. receber", valor: formatarMoeda(pendentePagamento.reduce((a,o)=>a+(Number(o.valor)||0),0)), cor:"#63b3ed" },
+          ].map((item, i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderBottom: i < 4 ? "1px solid #222" : "none" }}>
+              <span style={{ color:"#888", fontSize:13 }}>{item.label}</span>
+              <span style={{ color:item.cor, fontWeight:700, fontSize:14 }}>{item.valor}</span>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
 }
 
-function AbaOS({ ordens, mecanicos, clientes, estoque = [], servicosExtras = [] }) {
+function AbaOS({ ordens, mecanicos, clientes }) {
   const [modal, setModal] = useState(null);
+  const [detalhe, setDetalhe] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [busca, setBusca] = useState("");
 
@@ -292,6 +345,34 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [], servicosExtras = [] 
     enviarWhatsApp(os.telefone, msg);
   }
 
+  function whatsappOrcamento(os) {
+    if (!os.telefone) { alert("Telefone do cliente nao informado!"); return; }
+    const pecasLista = os.pecas ? "  - " + os.pecas : "  - A definir";
+    const linhas = [
+      "ORCAMENTO - STOPCAR OFICINA MECANICA",
+      "---",
+      "Ola, " + (os.cliente || "Cliente") + "!",
+      "Segue o orcamento para o seu veiculo:",
+      "",
+      "Veiculo: " + (os.modelo || "-") + " | Placa: " + (os.placa || "-"),
+      os.km ? "KM entrada: " + os.km : "",
+      "",
+      "Servico: " + nomeServico(os.servico),
+      os.obs ? "Descricao: " + os.obs : "",
+      "",
+      "Pecas e Materiais:",
+      pecasLista,
+      "",
+      "Valor Total: " + formatarMoeda(os.valor),
+      "",
+      "---",
+      "Para aprovar ou tirar duvidas, responda esta mensagem.",
+      "STOPCAR Oficina Mecanica"
+    ].filter(function(l) { return l !== null && l !== undefined; }).join("\n");
+    var num = os.telefone.replace(/[^0-9]/g, "");
+    window.open("https://wa.me/55" + num + "?text=" + encodeURIComponent(linhas), "_blank");
+  }
+
   return (
     <div className="aba-content">
       <div className="kanban-summary">
@@ -312,7 +393,7 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [], servicosExtras = [] 
       {ordensFiltradas.length === 0 ? <div className="vazio"><p>Nenhuma OS encontrada.</p></div> : (
         <div className="os-lista">
           {ordensFiltradas.map(os => (
-            <div key={os.id} className="os-card">
+            <div key={os.id} className="os-card" onClick={() => setDetalhe(os)} style={{cursor:"pointer"}}>
               <div className="os-card-top">
                 <div>
                   <span className="os-numero">OS #{os.numero || "---"}</span>
@@ -342,21 +423,224 @@ function AbaOS({ ordens, mecanicos, clientes, estoque = [], servicosExtras = [] 
                 <select value={os.status} onChange={e => mudarStatus(os.id, e.target.value)} className="select-status">
                   {Object.entries(STATUS_OS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                 </select>
-                <button className="btn-icon" title="WhatsApp" onClick={() => whatsappPronto(os)}><svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>
-                <button className="btn-icon" title="Imprimir" onClick={() => imprimirOS(os)}>🖨️</button>
-                <button className="btn-icon" title="Editar" onClick={() => setModal(os)}>✏️</button>
-                <button className="btn-icon" title="Excluir" onClick={() => excluirOS(os.id)}>🗑️</button>
+                <button onClick={e=>{e.stopPropagation();whatsappOrcamento(os);}} title="Enviar Orçamento" style={{background:"#25D36622",color:"#25D366",border:"1px solid #25D36633",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                  Orçamento
+                </button>
+                <button className="btn-icon" title="Avisar que está pronto" onClick={e=>{e.stopPropagation();whatsappPronto(os);}}><svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></button>
+                <button className="btn-icon" title="Imprimir" onClick={e=>{e.stopPropagation();imprimirOS(os);}}>🖨️</button>
+                <button className="btn-icon" title="Editar" onClick={e=>{e.stopPropagation();setModal(os);}}>✏️</button>
+                <button className="btn-icon" title="Excluir" onClick={e=>{e.stopPropagation();excluirOS(os.id);}}>🗑️</button>
               </div>
             </div>
           ))}
         </div>
       )}
-      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} estoque={estoque} servicosExtras={servicosExtras} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {modal && <ModalOS dados={modal === "nova" ? null : modal} mecanicos={mecanicos} clientes={clientes} onSalvar={salvarOS} onFechar={() => setModal(null)} />}
+      {detalhe && <ModalDetalheOS os={detalhe} onFechar={() => setDetalhe(null)} onEditar={() => { setModal(detalhe); setDetalhe(null); }} onWhatsApp={() => whatsappOrcamento(detalhe)} onPronto={() => whatsappPronto(detalhe)} onImprimir={() => imprimirOS(detalhe)} />}
     </div>
   );
 }
 
-function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras = [], onSalvar, onFechar }) {
+function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprimir }) {
+  const cor = STATUS_OS[os.status]?.cor || "#888";
+  const label = STATUS_OS[os.status]?.label || os.status;
+  const checklist = os.checklist || {};
+  const checkItens = CHECKLIST_ITENS.filter(i => checklist[i.id] && checklist[i.id] !== "na");
+  const statusIcon = { ok:"✅", atencao:"⚠️", urgente:"🔴" };
+  return (
+    <div className="modal-overlay" onClick={onFechar}>
+      <div className="modal" style={{ maxWidth:680, width:"95%", maxHeight:"90vh", display:"flex", flexDirection:"column" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 24px", borderBottom:"1px solid var(--borda,#2a2a2a)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <span style={{ color:"var(--texto,#fff)", fontWeight:700, fontSize:17 }}>OS #{os.numero}</span>
+            <span style={{ background:cor+"22", color:cor, border:`1px solid ${cor}44`, borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:700 }}>{label}</span>
+          </div>
+          <button className="modal-close" onClick={onFechar}>✕</button>
+        </div>
+        <div style={{ overflowY:"auto", padding:"20px 24px", display:"flex", flexDirection:"column", gap:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>👤 Cliente</p>
+              <p style={{ color:"var(--texto,#fff)", fontWeight:700, fontSize:15, margin:"0 0 4px" }}>{os.cliente || "—"}</p>
+              {os.telefone && <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:0 }}>📱 {os.telefone}</p>}
+            </div>
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>🚗 Veículo</p>
+              <p style={{ color:"var(--texto,#fff)", fontWeight:700, fontSize:15, margin:"0 0 4px" }}>{os.modelo || "—"}</p>
+              <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:"0 0 2px" }}>Placa: <strong style={{color:"var(--texto,#fff)"}}>{os.placa || "—"}</strong></p>
+              {os.km && <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:0 }}>KM: {os.km}</p>}
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>🔧 Serviço</p>
+              <p style={{ color:"var(--texto,#fff)", fontWeight:600, fontSize:14, margin:"0 0 4px" }}>{nomeServico(os.servico)}</p>
+              {os.mecanico && <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:0 }}>Mecânico: {os.mecanico}</p>}
+              {os.proxRevisaoKm && <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:"4px 0 0" }}>Próx. revisão: {os.proxRevisaoKm} km</p>}
+            </div>
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>💰 Financeiro</p>
+              <p style={{ color:"#48bb78", fontWeight:700, fontSize:20, margin:"0 0 4px" }}>{formatarMoeda(os.valor)}</p>
+              <p style={{ color:"var(--texto-sub,#888)", fontSize:13, margin:0 }}>Pagamento: {os.pagamento || "—"}</p>
+              <p style={{ color:"var(--texto-sub,#888)", fontSize:12, margin:"4px 0 0" }}>{formatarData(os.criadoEm)}</p>
+            </div>
+          </div>
+          {os.obs && (
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>📝 Descrição</p>
+              <p style={{ color:"var(--texto,#ddd)", fontSize:13, lineHeight:1.8, margin:0, whiteSpace:"pre-wrap" }}>{os.obs}</p>
+            </div>
+          )}
+          {os.pecas && (
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>🔩 Peças Utilizadas</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                {os.pecas.split("\n").filter(l => l.trim()).map((linha, i) => {
+                  const match = linha.replace(/^\d+\s*[-.]\s*/, "").match(/^(.+?)\s*[|]\s*R\$\s*([\d.,]+)$/);
+                  const nome = match ? match[1].trim() : linha.replace(/^\d+\s*[-.]\s*/, "").trim();
+                  const valor = match ? match[2] : null;
+                  return (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 12px", background:"var(--cinza-escuro,#0d0d0d)", borderRadius:7, border:"1px solid var(--borda,#222)" }}>
+                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>{i+1}.</span>
+                      <span style={{ color:"var(--texto,#ddd)", fontSize:13, flex:1 }}>{nome}</span>
+                      {valor && <span style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>R$ {valor}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {checkItens.length > 0 && (
+            <div style={{ background:"var(--cinza,#111)", borderRadius:10, padding:16, border:"1px solid var(--borda,#2a2a2a)" }}>
+              <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 8px" }}>✅ Checklist</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+                {checkItens.map(item => (
+                  <div key={item.id} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--texto-sub,#888)" }}>
+                    <span>{statusIcon[checklist[item.id]] || "•"}</span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ display:"flex", gap:8, padding:"14px 24px", borderTop:"1px solid var(--borda,#2a2a2a)", flexWrap:"wrap" }}>
+          <button onClick={onWhatsApp} style={{ background:"#25D36622", color:"#25D366", border:"1px solid #25D36644", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Enviar Orçamento
+          </button>
+          <button onClick={onPronto} style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>✅ Carro Pronto</button>
+          <button onClick={onImprimir} style={{ background:"#2a2a2a", color:"#ddd", border:"1px solid var(--borda,#333)", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🖨️ Imprimir</button>
+          <button onClick={onEditar} style={{ background:"#2a2a2a", color:"#ddd", border:"1px solid var(--borda,#333)", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>✏️ Editar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PecasList({ value, onChange, onTotalChange }) {
+  const parseItens = (v) => {
+    if (!v) return [{ nome: "", valor: "" }];
+    return v.split("\n").filter(l => l.trim()).map(l => {
+      // Format: "1 - Nome - R$ 00,00" or "1 - Nome"
+      const semNum = l.replace(/^\d+\s*[-.]\s*/, "");
+      const match = semNum.match(/^(.+?)\s*[-|]\s*R?\$?\s*([\d.,]+)$/);
+      if (match) return { nome: match[1].trim(), valor: match[2].replace(",", ".") };
+      return { nome: semNum.trim(), valor: "" };
+    });
+  };
+
+  const [itens, setItens] = useState(() => parseItens(value));
+
+  function calcTotal(lista) {
+    return lista.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0);
+  }
+
+  function updateParent(lista) {
+    const texto = lista.map((item, i) => {
+      const v = parseFloat(item.valor) || 0;
+      return `${i + 1} - ${item.nome || ""}${v > 0 ? " | R$ " + v.toFixed(2).replace(".", ",") : ""}`;
+    }).join("\n");
+    onChange(texto);
+    if (onTotalChange) onTotalChange(calcTotal(lista));
+  }
+
+  function setItem(i, field, val) {
+    const novos = itens.map((it, idx) => idx === i ? { ...it, [field]: val } : it);
+    setItens(novos);
+    updateParent(novos);
+  }
+
+  function addItem() {
+    const novos = [...itens, { nome: "", valor: "" }];
+    setItens(novos);
+    updateParent(novos);
+    setTimeout(() => {
+      const inputs = document.querySelectorAll(".pecas-nome");
+      if (inputs[novos.length - 1]) inputs[novos.length - 1].focus();
+    }, 10);
+  }
+
+  function removeItem(i) {
+    const novos = itens.length === 1 ? [{ nome: "", valor: "" }] : itens.filter((_, idx) => idx !== i);
+    setItens(novos);
+    updateParent(novos);
+  }
+
+  function handleKeyDown(e, i) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addItem();
+    }
+  }
+
+  const total = calcTotal(itens);
+
+  return (
+    <div style={{ background:"var(--cinza-escuro,#111)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:8, padding:"10px 12px", display:"flex", flexDirection:"column", gap:6 }}>
+      {/* Header */}
+      <div style={{ display:"grid", gridTemplateColumns:"22px 1fr 110px 24px", gap:8, paddingBottom:4, borderBottom:"1px solid var(--borda,#222)" }}>
+        <span/>
+        <span style={{ color:"var(--texto-sub,#666)", fontSize:11, textTransform:"uppercase", letterSpacing:"0.05em" }}>Item</span>
+        <span style={{ color:"var(--texto-sub,#666)", fontSize:11, textTransform:"uppercase", letterSpacing:"0.05em" }}>Valor (R$)</span>
+        <span/>
+      </div>
+      {itens.map((item, i) => (
+        <div key={i} style={{ display:"grid", gridTemplateColumns:"22px 1fr 110px 24px", gap:8, alignItems:"center" }}>
+          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, textAlign:"right" }}>{i + 1}.</span>
+          <input
+            className="pecas-nome"
+            value={item.nome}
+            onChange={e => setItem(i, "nome", e.target.value)}
+            onKeyDown={e => handleKeyDown(e, i)}
+            placeholder={i === 0 ? "Ex: Óleo 15W40..." : "Item..."}
+            style={{ background:"transparent", border:"none", outline:"none", color:"var(--texto,#fff)", fontSize:13, padding:"3px 0" }}
+          />
+          <input
+            value={item.valor}
+            onChange={e => setItem(i, "valor", e.target.value)}
+            placeholder="0,00"
+            type="number"
+            min="0"
+            step="0.01"
+            style={{ background:"var(--cinza,#1a1a1a)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:6, color:"#48bb78", fontSize:13, padding:"3px 8px", width:"100%", textAlign:"right" }}
+          />
+          <button type="button" onClick={() => removeItem(i)} style={{ background:"none", border:"none", color:"#444", cursor:"pointer", fontSize:14 }}>✕</button>
+        </div>
+      ))}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:4, paddingTop:8, borderTop:"1px solid var(--borda,#222)" }}>
+        <button type="button" onClick={addItem} style={{ background:"none", border:"1px dashed var(--borda,#2a2a2a)", borderRadius:6, color:"var(--texto-sub,#666)", fontSize:12, padding:"4px 10px", cursor:"pointer" }}>+ Adicionar item</button>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <span style={{ color:"var(--texto-sub,#888)", fontSize:12 }}>Total:</span>
+          <span style={{ color:"#48bb78", fontWeight:700, fontSize:15 }}>R$ {total.toFixed(2).replace(".", ",")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalOS({ dados, mecanicos, clientes = [], onSalvar, onFechar }) {
   const [form, setForm] = useState({
     cliente: dados?.cliente || "", telefone: dados?.telefone || "",
     placa: dados?.placa || "", modelo: dados?.modelo || "",
@@ -382,20 +666,28 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras
     setMostrarSugestoes(false);
   }
 
-  const [modalNovoServico, setModalNovoServico] = useState(false);
-  const [novoServico, setNovoServico] = useState({ nome: "", preco: "" });
-  const todosServicos = [...SERVICOS, ...servicosExtras.map(s => ({ id: s.id, nome: s.nome, preco: s.preco || 0 }))];
+  const [servicosCustom, setServicosCustom] = useState([]);
+  const [modalServico, setModalServico] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoPreco, setNovoPreco] = useState("");
+  const todosServicos = [...SERVICOS, ...servicosCustom];
 
   async function salvarNovoServico() {
-    if (!novoServico.nome.trim()) return;
+    if (!novoNome.trim()) return;
     try {
-      await addDoc(collection(db, "servicosExtras"), {
-        nome: novoServico.nome.trim(),
-        preco: Number(novoServico.preco) || 0,
+      const ref = await addDoc(collection(db, "servicosExtras"), {
+        id: "custom_" + Date.now(),
+        nome: novoNome.trim(),
+        preco: Number(novoPreco) || 0,
         criadoEm: serverTimestamp(),
       });
-      setNovoServico({ nome: "", preco: "" });
-      setModalNovoServico(false);
+      const novo = { id: ref.id, nome: novoNome.trim(), preco: Number(novoPreco) || 0 };
+      setServicosCustom(prev => [...prev, novo]);
+      set("servico", ref.id);
+      if (!form.valor) set("valor", novo.preco);
+      setNovoNome("");
+      setNovoPreco("");
+      setModalServico(false);
     } catch(e) { alert("Erro: " + e.message); }
   }
 
@@ -443,33 +735,24 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras
               <label>Modelo<input value={form.modelo} onChange={e => set("modelo", e.target.value)} placeholder="Fiat Uno 2018" /></label>
               <label>KM Entrada<input value={form.km} onChange={e => set("km", e.target.value)} placeholder="85000" /></label>
               <label>Prox. Revisao KM<input value={form.proxRevisaoKm} onChange={e => set("proxRevisaoKm", e.target.value)} placeholder="90000" /></label>
-              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                <span style={{ fontSize:"0.75rem", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em", color:"var(--texto-sub,#888)" }}>Serviço</span>
-                <div style={{ display:"flex", flexDirection:"row", gap:6, alignItems:"center" }}>
-                  <select value={form.servico} onChange={e => { set("servico", e.target.value); const s = todosServicos.find(x=>x.id===e.target.value); if (!form.valor && s) set("valor", s.preco); }} style={{ flex:1, minWidth:0 }}>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <span style={{fontSize:"0.75rem",fontWeight:600,textTransform:"uppercase",color:"var(--texto-sub,#888)"}}>Servico</span>
+                <div style={{display:"flex",gap:6}}>
+                  <select value={form.servico} style={{flex:1}} onChange={e=>{set("servico",e.target.value);const s=todosServicos.find(x=>x.id===e.target.value);if(!form.valor&&s)set("valor",s.preco);}}>
                     <option value="">Selecione...</option>
-                    <optgroup label="Serviços Padrão">
-                      {SERVICOS.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                    </optgroup>
-                    {servicosExtras.length > 0 && (
-                      <optgroup label="Serviços Personalizados">
-                        {servicosExtras.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-                      </optgroup>
-                    )}
+                    <optgroup label="Padrão">{SERVICOS.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</optgroup>
+                    {servicosCustom.length>0&&<optgroup label="Personalizados">{servicosCustom.map(s=><option key={s.id} value={s.id}>{s.nome}</option>)}</optgroup>}
                   </select>
-                  <button type="button" onClick={() => setModalNovoServico(v => !v)}
-                    style={{ background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, width:36, height:36, fontSize:22, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700 }}>+</button>
+                  <button type="button" onClick={()=>setModalServico(v=>!v)} style={{background:"#e53e3e",color:"#fff",border:"none",borderRadius:8,width:36,height:36,fontSize:22,fontWeight:700,cursor:"pointer",flexShrink:0}}>+</button>
                 </div>
-                {modalNovoServico && (
-                  <div style={{ background:"#111", border:"1px solid #e53e3e55", borderRadius:10, padding:14, marginTop:4 }}>
-                    <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>Novo Serviço</p>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      <input value={novoServico.nome} onChange={e => setNovoServico(n => ({...n, nome: e.target.value}))} placeholder="Nome do serviço" />
-                      <input value={novoServico.preco} onChange={e => setNovoServico(n => ({...n, preco: e.target.value}))} placeholder="Preço (R$)" type="number" />
-                      <div style={{ display:"flex", gap:8 }}>
-                        <button type="button" onClick={salvarNovoServico} style={{ flex:1, background:"#e53e3e", color:"#fff", border:"none", borderRadius:8, padding:"8px", fontWeight:700, cursor:"pointer" }}>Salvar</button>
-                        <button type="button" onClick={() => setModalNovoServico(false)} style={{ flex:1, background:"#2a2a2a", color:"#888", border:"none", borderRadius:8, padding:"8px", cursor:"pointer" }}>Cancelar</button>
-                      </div>
+                {modalServico&&(
+                  <div style={{background:"#111",border:"1px solid #e53e3e55",borderRadius:10,padding:12,marginTop:4,display:"flex",flexDirection:"column",gap:8}}>
+                    <span style={{color:"#e53e3e",fontSize:11,fontWeight:700,textTransform:"uppercase"}}>Novo Serviço</span>
+                    <input value={novoNome} onChange={e=>setNovoNome(e.target.value)} placeholder="Nome do serviço"/>
+                    <input value={novoPreco} onChange={e=>setNovoPreco(e.target.value)} placeholder="Preço R$" type="number"/>
+                    <div style={{display:"flex",gap:8}}>
+                      <button type="button" onClick={salvarNovoServico} style={{flex:1,background:"#e53e3e",color:"#fff",border:"none",borderRadius:8,padding:"8px",fontWeight:700,cursor:"pointer"}}>Salvar</button>
+                      <button type="button" onClick={()=>setModalServico(false)} style={{flex:1,background:"#2a2a2a",color:"#888",border:"none",borderRadius:8,padding:"8px",cursor:"pointer"}}>Cancelar</button>
                     </div>
                   </div>
                 )}
@@ -500,7 +783,10 @@ function ModalOS({ dados, mecanicos, clientes = [], estoque = [], servicosExtras
               </label>
               <label>Prox. revisao recomendada<input value={form.proxRevisao} onChange={e => set("proxRevisao", e.target.value)} placeholder="Ex: 6 meses ou 5.000 km" /></label>
               <label className="span2">Descricao / Observacoes<textarea value={form.obs} onChange={e => set("obs", e.target.value)} rows={2} placeholder="Descreva o servico..." /></label>
-              <label className="span2">Pecas utilizadas<textarea value={form.pecas} onChange={e => set("pecas", e.target.value)} rows={2} placeholder="Ex: Filtro de oleo, vela de ignicao..." /></label>
+              <div className="span2" style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                <span style={{ fontSize:"0.75rem", fontWeight:600, textTransform:"uppercase", color:"var(--texto-sub,#888)" }}>Peças Utilizadas</span>
+                <PecasList value={form.pecas} onChange={v => set("pecas", v)} onTotalChange={total => { if (total > 0) set("valor", total); }} />
+              </div>
             </div>
           )}
           {abaModal === "checklist" && (
