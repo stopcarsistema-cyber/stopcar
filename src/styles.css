@@ -664,3 +664,23 @@ button, input, select, textarea { transition: background-color 0.25s ease, borde
 [data-tema="claro"] .nav-tab { color: #555; }
 [data-tema="claro"] .nav-tab:hover { color: #111; }
 [data-tema="claro"] .os-acoes { border-top-color: #E8EAED; }
+
+/* ─── Histórico por placa ──────────────────────────────────────────────────── */
+.placas-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+
+.placa-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--cinza-escuro); border: 1px solid var(--borda);
+  border-radius: var(--radius); padding: 10px 14px;
+  cursor: pointer; text-align: left; width: 100%;
+  color: var(--texto);
+  transition: border-color .15s, background .15s;
+}
+.placa-item:hover { border-color: var(--vermelho); background: var(--cinza); }
+
+.placa-tag {
+  font-family: var(--font-mono); font-weight: 700; font-size: .9rem;
+  color: var(--vermelho-vivo); min-width: 90px;
+}
+.placa-info { flex: 1; font-size: .85rem; color: var(--texto); }
+.placa-count { font-size: .8rem; color: var(--texto-sub); white-space: nowrap; }
