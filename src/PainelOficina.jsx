@@ -341,8 +341,32 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}\nValor: ${formatarMoeda(os.valor)}\n\nAguardamos voce!`;
-    enviarWhatsApp(os.telefone, msg);
+    const pecasLinhas = os.pecas
+      ? os.pecas.split("\n").filter(l => l.trim()).map(l => "  " + l.replace(/^\d+\s*[-.]\s*/, "").replace(/\s*[|].*$/, "").trim())
+      : [];
+    const partes = [
+      "✅ *VEICULO PRONTO - STOPCAR*",
+      "",
+      "Ola, *" + (os.cliente || "Cliente") + "*!",
+      "",
+      "🚗 *" + (os.modelo || "") + "* | Placa: *" + (os.placa || "") + "*",
+    ];
+    if (os.km) partes.push("📍 KM: " + os.km);
+    partes.push("");
+    partes.push("🔧 *Servico realizado:* " + nomeServico(os.servico));
+    if (pecasLinhas.length > 0) {
+      partes.push("");
+      partes.push("📦 *Pecas utilizadas:*");
+      pecasLinhas.forEach(p => partes.push(p));
+    }
+    if (os.obs) { partes.push(""); partes.push("📝 *Obs:* " + os.obs); }
+    partes.push("");
+    partes.push("💰 *Valor total: " + formatarMoeda(os.valor) + "*");
+    if (os.pagamento) partes.push("💳 Pagamento: " + os.pagamento);
+    partes.push("");
+    partes.push("━━━━━━━━━━━━━━━━━━━━");
+    partes.push("Aguardamos voce na STOPCAR! 🚘");
+    enviarWhatsApp(os.telefone, partes.join("\n"));
   }
 
   function whatsappOrcamento(os) {
