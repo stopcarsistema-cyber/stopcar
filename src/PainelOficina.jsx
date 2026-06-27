@@ -400,8 +400,15 @@ function AbaOS({ ordens, mecanicos, clientes }) {
                   <span className="os-placa">{os.placa}</span>
                   <span className="os-modelo">{os.modelo}</span>
                 </div>
-                <span className="os-status-badge" style={{background: STATUS_OS[os.status]?.cor + "22", color: STATUS_OS[os.status]?.cor}}>
-                  {STATUS_OS[os.status]?.label}
+                <span className="os-status-badge" title="Clique para mudar o status"
+                  style={{background: STATUS_OS[os.status]?.cor + "22", color: STATUS_OS[os.status]?.cor, cursor:"pointer", userSelect:"none"}}
+                  onClick={e => {
+                    e.stopPropagation();
+                    const keys = Object.keys(STATUS_OS);
+                    const next = keys[(keys.indexOf(os.status) + 1) % keys.length];
+                    mudarStatus(os.id, next);
+                  }}>
+                  {STATUS_OS[os.status]?.label} ↻
                 </span>
               </div>
               <p className="os-cliente">{os.cliente} · {os.telefone}</p>
@@ -837,7 +844,7 @@ function AbaHistorico({ ordens }) {
               return (
                 <button key={p} className="placa-item" onClick={() => { setPlacaSel(p); setBusca(p); }}>
                   <span className="placa-tag">{p}</span>
-                  <span className="placa-info" style={{ color:"var(--texto, #ddd)" }}>{os[0]?.modelo} · {os[0]?.cliente}</span>
+                  <span className="placa-info">{os[0]?.modelo} · {os[0]?.cliente}</span>
                   <span className="placa-count">{os.length} OS</span>
                 </button>
               );
