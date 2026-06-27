@@ -341,31 +341,40 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
+    const ok = "\u2705";
+    const carro = "\uD83D\uDE97";
+    const pin = "\uD83D\uDCCD";
+    const chave = "\uD83D\uDD27";
+    const caixa = "\uD83D\uDCE6";
+    const nota = "\uD83D\uDCDD";
+    const dinheiro = "\uD83D\uDCB0";
+    const cartao = "\uD83D\uDCB3";
+    const stopcar = "\uD83D\uDE98";
     const pecasLinhas = os.pecas
-      ? os.pecas.split("\n").filter(l => l.trim()).map(l => "  " + l.replace(/^\d+\s*[-.]\s*/, "").replace(/\s*[|].*$/, "").trim())
+      ? os.pecas.split("\n").filter(l => l.trim()).map(l => "  " + l.replace(/^\d+\s*[-.]?\s*/, "").replace(/\s*[|].*$/, "").trim())
       : [];
     const partes = [
-      "✅ *VEICULO PRONTO - STOPCAR*",
+      ok + " *VEICULO PRONTO - STOPCAR*",
       "",
       "Ola, *" + (os.cliente || "Cliente") + "*!",
       "",
-      "🚗 *" + (os.modelo || "") + "* | Placa: *" + (os.placa || "") + "*",
+      carro + " *" + (os.modelo || "") + "* | Placa: *" + (os.placa || "") + "*",
     ];
-    if (os.km) partes.push("📍 KM: " + os.km);
+    if (os.km) partes.push(pin + " KM: " + os.km);
     partes.push("");
-    partes.push("🔧 *Servico realizado:* " + nomeServico(os.servico));
+    partes.push(chave + " *Servico realizado:* " + nomeServico(os.servico));
     if (pecasLinhas.length > 0) {
       partes.push("");
-      partes.push("📦 *Pecas utilizadas:*");
+      partes.push(caixa + " *Pecas utilizadas:*");
       pecasLinhas.forEach(p => partes.push(p));
     }
-    if (os.obs) { partes.push(""); partes.push("📝 *Obs:* " + os.obs); }
+    if (os.obs) { partes.push(""); partes.push(nota + " *Obs:* " + os.obs); }
     partes.push("");
-    partes.push("💰 *Valor total: " + formatarMoeda(os.valor) + "*");
-    if (os.pagamento) partes.push("💳 Pagamento: " + os.pagamento);
+    partes.push(dinheiro + " *Valor total: " + formatarMoeda(os.valor) + "*");
+    if (os.pagamento) partes.push(cartao + " Pagamento: " + os.pagamento);
     partes.push("");
-    partes.push("━━━━━━━━━━━━━━━━━━━━");
-    partes.push("Aguardamos voce na STOPCAR! 🚘");
+    partes.push("\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501");
+    partes.push("Aguardamos voce na STOPCAR! " + stopcar);
     enviarWhatsApp(os.telefone, partes.join("\n"));
   }
 
