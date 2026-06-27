@@ -369,6 +369,7 @@ function AbaOS({ ordens, mecanicos, clientes }) {
     enviarWhatsApp(os.telefone, partes.join("\n"));
   }
 
+
   function whatsappOrcamento(os) {
     if (!os.telefone) { alert("Telefone do cliente nao informado!"); return; }
     const pecasLista = os.pecas ? "  - " + os.pecas : "  - A definir";
