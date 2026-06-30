@@ -341,56 +341,9 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const pecasLinhas = os.pecas
-      ? os.pecas.split("\n").filter(l => l.trim()).map((l, i) => (i+1) + ". " + l.replace(/^\d+\s*[-.]?\s*/, "").replace(/\s*[|].*$/, "").trim())
-      : [];
-    const servico = nomeServico(os.servico);
-    const partes = [
-      "================================",
-      "   STOPCAR - OFICINA MECANICA   ",
-      "================================",
-      "",
-      "Ola, *" + (os.cliente || "Cliente") + "*!",
-      "Seu veiculo esta *PRONTO* para retirada!",
-      "",
-      "--------------------------------",
-      "  VEICULO",
-      "--------------------------------",
-      "*Modelo:* " + (os.modelo || "-"),
-      "*Placa:*  " + (os.placa || "-"),
-    ];
-    if (os.km) partes.push("*KM:*     " + os.km);
-    if (servico) {
-      partes.push("");
-      partes.push("--------------------------------");
-      partes.push("  SERVICO REALIZADO");
-      partes.push("--------------------------------");
-      partes.push(servico);
-    }
-    if (os.obs) {
-      partes.push("*Obs:* " + os.obs);
-    }
-    if (pecasLinhas.length > 0) {
-      partes.push("");
-      partes.push("--------------------------------");
-      partes.push("  PECAS UTILIZADAS");
-      partes.push("--------------------------------");
-      pecasLinhas.forEach(p => partes.push(p));
-    }
-    partes.push("");
-    partes.push("--------------------------------");
-    partes.push("  FINANCEIRO");
-    partes.push("--------------------------------");
-    partes.push("*Valor total: " + formatarMoeda(os.valor) + "*");
-    if (os.pagamento) partes.push("*Pagamento:* " + os.pagamento);
-    partes.push("");
-    partes.push("================================");
-    partes.push("Aguardamos voce!");
-    partes.push("STOPCAR Oficina Mecanica");
-    partes.push("================================");
-    enviarWhatsApp(os.telefone, partes.join("\n"));
+    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}\nValor: ${formatarMoeda(os.valor)}\n\nAguardamos voce!`;
+    enviarWhatsApp(os.telefone, msg);
   }
-
 
   function whatsappOrcamento(os) {
     if (!os.telefone) { alert("Telefone do cliente nao informado!"); return; }
@@ -447,15 +400,8 @@ function AbaOS({ ordens, mecanicos, clientes }) {
                   <span className="os-placa">{os.placa}</span>
                   <span className="os-modelo">{os.modelo}</span>
                 </div>
-                <span className="os-status-badge" title="Clique para mudar o status"
-                  style={{background: STATUS_OS[os.status]?.cor + "22", color: STATUS_OS[os.status]?.cor, cursor:"pointer", userSelect:"none"}}
-                  onClick={e => {
-                    e.stopPropagation();
-                    const keys = Object.keys(STATUS_OS);
-                    const next = keys[(keys.indexOf(os.status) + 1) % keys.length];
-                    mudarStatus(os.id, next);
-                  }}>
-                  {STATUS_OS[os.status]?.label} ↻
+                <span className="os-status-badge" style={{background: STATUS_OS[os.status]?.cor + "22", color: STATUS_OS[os.status]?.cor}}>
+                  {STATUS_OS[os.status]?.label}
                 </span>
               </div>
               <p className="os-cliente">{os.cliente} · {os.telefone}</p>
@@ -551,12 +497,12 @@ function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprim
               <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>🔩 Peças Utilizadas</p>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {os.pecas.split("\n").filter(l => l.trim()).map((linha, i) => {
-                  const match = linha.replace(/^\d+\s*[-.]\s*/, "").match(/^(.+?)\s*[|]\s*R\$\s*([\d.,]+)$/);
-                  const nome = match ? match[1].trim() : linha.replace(/^\d+\s*[-.]\s*/, "").trim();
+                  const match = linha.replace(/^(\d+\s*[-.]|\*)\s*/, "").match(/^(.+?)\s*[|]\s*R\$\s*([\d.,]+)$/);
+                  const nome = match ? match[1].trim() : linha.replace(/^(\d+\s*[-.]|\*)\s*/, "").trim();
                   const valor = match ? match[2] : null;
                   return (
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 12px", background:"var(--cinza-escuro,#0d0d0d)", borderRadius:7, border:"1px solid var(--borda,#222)" }}>
-                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>{i+1}.</span>
+                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>*</span>
                       <span style={{ color:"var(--texto,#ddd)", fontSize:13, flex:1 }}>{nome}</span>
                       {valor && <span style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>R$ {valor}</span>}
                     </div>
@@ -598,7 +544,7 @@ function PecasList({ value, onChange, onTotalChange }) {
     if (!v) return [{ nome: "", valor: "" }];
     return v.split("\n").filter(l => l.trim()).map(l => {
       // Format: "1 - Nome - R$ 00,00" or "1 - Nome"
-      const semNum = l.replace(/^\d+\s*[-.]\s*/, "");
+      const semNum = l.replace(/^(\d+\s*[-.]|\*)\s*/, "");
       const match = semNum.match(/^(.+?)\s*[-|]\s*R?\$?\s*([\d.,]+)$/);
       if (match) return { nome: match[1].trim(), valor: match[2].replace(",", ".") };
       return { nome: semNum.trim(), valor: "" };
@@ -612,9 +558,9 @@ function PecasList({ value, onChange, onTotalChange }) {
   }
 
   function updateParent(lista) {
-    const texto = lista.map((item, i) => {
+    const texto = lista.map((item) => {
       const v = parseFloat(item.valor) || 0;
-      return `${i + 1} - ${item.nome || ""}${v > 0 ? " | R$ " + v.toFixed(2).replace(".", ",") : ""}`;
+      return `* ${item.nome || ""}${v > 0 ? " | R$ " + v.toFixed(2).replace(".", ",") : ""}`;
     }).join("\n");
     onChange(texto);
     if (onTotalChange) onTotalChange(calcTotal(lista));
@@ -662,7 +608,7 @@ function PecasList({ value, onChange, onTotalChange }) {
       </div>
       {itens.map((item, i) => (
         <div key={i} style={{ display:"grid", gridTemplateColumns:"22px 1fr 110px 24px", gap:8, alignItems:"center" }}>
-          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, textAlign:"right" }}>{i + 1}.</span>
+          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, textAlign:"right" }}>*</span>
           <input
             className="pecas-nome"
             value={item.nome}
