@@ -502,7 +502,7 @@ function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprim
                   const valor = match ? match[2] : null;
                   return (
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 12px", background:"var(--cinza-escuro,#0d0d0d)", borderRadius:7, border:"1px solid var(--borda,#222)" }}>
-                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>{i+1}.</span>
+                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>*</span>
                       <span style={{ color:"var(--texto,#ddd)", fontSize:13, flex:1 }}>{nome}</span>
                       {valor && <span style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>R$ {valor}</span>}
                     </div>
