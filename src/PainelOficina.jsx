@@ -1322,16 +1322,33 @@ function AbaEquipe({ mecanicos, ordens }) {
             const hoje = new Date();
             const totalMes = osMec.filter(o => { const d=o.criadoEm?.toDate?o.criadoEm.toDate():new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
             return (
-              <div key={m.id} className="mecanico-card">
-                <div className="mecanico-avatar">{m.nome.charAt(0).toUpperCase()}</div>
-                <div className="mecanico-info"><strong>{m.nome}</strong>{m.especialidade&&<span>{m.especialidade}</span>}{m.telefone&&<span>{m.telefone}</span>}</div>
-                <div className="mecanico-stats">
-                  <div><span className="stat-num">{osMec.length}</span><span>OS total</span></div>
-                  <div><span className="stat-num azul">{totalMes.length}</span><span>este mes</span></div>
-                  <div><span className="stat-num verde">{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span><span>faturado</span></div>
+              <div key={m.id} style={{ background:"var(--cinza-escuro,#141414)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:14, padding:"1.3rem", display:"flex", flexDirection:"column", gap:"1rem" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:"1rem" }}>
+                  <div style={{ width:52, height:52, borderRadius:"50%", background:"#CC000022", border:"2px solid #CC0000", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.4rem", fontWeight:900, color:"#FF2020", flexShrink:0 }}>
+                    {m.nome.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:"1rem", color:"var(--texto,#f0f0f0)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.nome}</div>
+                    {m.especialidade && <div style={{ fontSize:".8rem", color:"#FF2020", fontWeight:600, marginTop:2 }}>{m.especialidade}</div>}
+                    {m.telefone && <div style={{ fontSize:".78rem", color:"var(--texto-sub,#888)", marginTop:2 }}>{m.telefone}</div>}
+                  </div>
                 </div>
-                <div className="tabela-acoes" style={{marginTop:".5rem"}}>
-                  <button className="btn-icon" onClick={()=>setModal(m)}>✏️</button>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:".5rem", borderTop:"1px solid var(--borda,#2a2a2a)", paddingTop:".9rem" }}>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                    <span style={{ fontFamily:"monospace", fontSize:"1.3rem", fontWeight:700, color:"var(--texto,#f0f0f0)" }}>{osMec.length}</span>
+                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>OS total</span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, borderLeft:"1px solid var(--borda,#2a2a2a)", borderRight:"1px solid var(--borda,#2a2a2a)" }}>
+                    <span style={{ fontFamily:"monospace", fontSize:"1.3rem", fontWeight:700, color:"#3B82F6" }}>{totalMes.length}</span>
+                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>Este mes</span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+                    <span style={{ fontFamily:"monospace", fontSize:".9rem", fontWeight:700, color:"#10B981" }}>{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span>
+                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>Faturado</span>
+                  </div>
+                </div>
+                <div style={{ display:"flex", gap:".5rem", justifyContent:"flex-end", borderTop:"1px solid var(--borda,#2a2a2a)", paddingTop:".75rem" }}>
+                  <button className="btn-secondary btn-sm" onClick={()=>setModal(m)}>✏️ Editar</button>
                   <button className="btn-icon" onClick={()=>excluir(m.id)}>🗑️</button>
                 </div>
               </div>
