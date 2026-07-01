@@ -341,7 +341,14 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}\nValor: ${formatarMoeda(os.valor)}\n\nAguardamos voce!`;
+    const pecasLista = os.pecas
+      ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
+          const semPrefix = l.replace(/^(\d+\s*[-.\*]|\*)\s*/, "").trim();
+          return "  • " + semPrefix;
+        }).join("\n")
+      : null;
+    const pecasTexto = pecasLista ? `\n\n*Pecas / Servicos realizados:*\n${pecasLista}` : "";
+    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}${pecasTexto}\n\nValor total: *${formatarMoeda(os.valor)}*\n\nAguardamos voce! \uD83D\uDE97`;
     enviarWhatsApp(os.telefone, msg);
   }
 
