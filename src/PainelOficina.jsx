@@ -341,7 +341,20 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}\nValor: ${formatarMoeda(os.valor)}\n\nAguardamos voce!`;
+    const pecas = os.pecas
+      ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
+          return "   - " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
+        }).join("\n")
+      : null;
+    const msgPecas = pecas ? "\n*Pecas e servicos realizados:*\n" + pecas : "";
+    const msg =
+      "Ola, *" + os.cliente + "*!\n" +
+      "Seu veiculo *" + os.modelo + "* (" + os.placa + ") esta pronto para retirada!" +
+      msgPecas + "\n" +
+      "*Valor total: " + formatarMoeda(os.valor) + "*\n" +
+      "*STOPCAR Oficina Mecanica*\n" +
+      "Rua Dr. Joao Alberto Vilar Mamede, 710 - Cidade Alta\n" +
+      "Qualquer duvida estamos a disposicao! Aguardamos voce.";
     enviarWhatsApp(os.telefone, msg);
   }
 
