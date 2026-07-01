@@ -343,20 +343,18 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   function whatsappPronto(os) {
     const pecas = os.pecas
       ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
-          return "   • " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
+          return "   - " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
         }).join("\n")
       : null;
-    const msgPecas = pecas
-      ? "\n\n🔧 *Peças e serviços realizados:*\n" + pecas
-      : "";
+    const msgPecas = pecas ? "\n\n*Pecas e servicos realizados:*\n" + pecas : "";
     const msg =
-      "Olá, *" + os.cliente + "*! 👋\n\n" +
-      "Seu veículo *" + os.modelo + "* (" + os.placa + ") está pronto para retirada! ✅" +
+      "Ola, *" + os.cliente + "*!\n\n" +
+      "Seu veiculo *" + os.modelo + "* (" + os.placa + ") esta pronto para retirada!" +
       msgPecas + "\n\n" +
-      "💰 *Valor total: " + formatarMoeda(os.valor) + "*\n\n" +
-      "📍 *STOPCAR Oficina Mecânica*\n" +
-      "Rua Dr. João Alberto Vilar Mamede, 710 - Cidade Alta\n\n" +
-      "Qualquer dúvida estamos à disposição! Aguardamos você. 🚗";
+      "*Valor total: " + formatarMoeda(os.valor) + "*\n\n" +
+      "*STOPCAR Oficina Mecanica*\n" +
+      "Rua Dr. Joao Alberto Vilar Mamede, 710 - Cidade Alta\n\n" +
+      "Qualquer duvida estamos a disposicao! Aguardamos voce.";
     enviarWhatsApp(os.telefone, msg);
   }
 
