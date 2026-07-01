@@ -341,14 +341,22 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const pecasLista = os.pecas
+    const pecas = os.pecas
       ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
-          const semPrefix = l.replace(/^(\d+\s*[-.\*]|\*)\s*/, "").trim();
-          return "  • " + semPrefix;
+          return "   • " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
         }).join("\n")
       : null;
-    const pecasTexto = pecasLista ? `\n\n*Pecas / Servicos realizados:*\n${pecasLista}` : "";
-    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}${pecasTexto}\n\nValor total: *${formatarMoeda(os.valor)}*\n\nAguardamos voce! \uD83D\uDE97`;
+    const msgPecas = pecas
+      ? "\n\n🔧 *Peças e serviços realizados:*\n" + pecas
+      : "";
+    const msg =
+      "Olá, *" + os.cliente + "*! 👋\n\n" +
+      "Seu veículo *" + os.modelo + "* (" + os.placa + ") está pronto para retirada! ✅" +
+      msgPecas + "\n\n" +
+      "💰 *Valor total: " + formatarMoeda(os.valor) + "*\n\n" +
+      "📍 *STOPCAR Oficina Mecânica*\n" +
+      "Rua Dr. João Alberto Vilar Mamede, 710 - Cidade Alta\n\n" +
+      "Qualquer dúvida estamos à disposição! Aguardamos você. 🚗";
     enviarWhatsApp(os.telefone, msg);
   }
 
@@ -504,12 +512,12 @@ function ModalDetalheOS({ os, onFechar, onEditar, onWhatsApp, onPronto, onImprim
               <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", margin:"0 0 10px" }}>🔩 Peças Utilizadas</p>
               <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                 {os.pecas.split("\n").filter(l => l.trim()).map((linha, i) => {
-                  const match = linha.replace(/^(\d+\s*[-.]|\*)\s*/, "").match(/^(.+?)\s*[|]\s*R\$\s*([\d.,]+)$/);
-                  const nome = match ? match[1].trim() : linha.replace(/^(\d+\s*[-.]|\*)\s*/, "").trim();
+                  const match = linha.replace(/^\d+\s*[-.]\s*/, "").match(/^(.+?)\s*[|]\s*R\$\s*([\d.,]+)$/);
+                  const nome = match ? match[1].trim() : linha.replace(/^\d+\s*[-.]\s*/, "").trim();
                   const valor = match ? match[2] : null;
                   return (
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 12px", background:"var(--cinza-escuro,#0d0d0d)", borderRadius:7, border:"1px solid var(--borda,#222)" }}>
-                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>*</span>
+                      <span style={{ color:"#e53e3e", fontWeight:700, fontSize:12, minWidth:20 }}>{i+1}.</span>
                       <span style={{ color:"var(--texto,#ddd)", fontSize:13, flex:1 }}>{nome}</span>
                       {valor && <span style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>R$ {valor}</span>}
                     </div>
@@ -551,7 +559,7 @@ function PecasList({ value, onChange, onTotalChange }) {
     if (!v) return [{ nome: "", valor: "" }];
     return v.split("\n").filter(l => l.trim()).map(l => {
       // Format: "1 - Nome - R$ 00,00" or "1 - Nome"
-      const semNum = l.replace(/^(\d+\s*[-.]|\*)\s*/, "");
+      const semNum = l.replace(/^\d+\s*[-.]\s*/, "");
       const match = semNum.match(/^(.+?)\s*[-|]\s*R?\$?\s*([\d.,]+)$/);
       if (match) return { nome: match[1].trim(), valor: match[2].replace(",", ".") };
       return { nome: semNum.trim(), valor: "" };
@@ -565,9 +573,9 @@ function PecasList({ value, onChange, onTotalChange }) {
   }
 
   function updateParent(lista) {
-    const texto = lista.map((item) => {
+    const texto = lista.map((item, i) => {
       const v = parseFloat(item.valor) || 0;
-      return `* ${item.nome || ""}${v > 0 ? " | R$ " + v.toFixed(2).replace(".", ",") : ""}`;
+      return `${i + 1} - ${item.nome || ""}${v > 0 ? " | R$ " + v.toFixed(2).replace(".", ",") : ""}`;
     }).join("\n");
     onChange(texto);
     if (onTotalChange) onTotalChange(calcTotal(lista));
@@ -615,7 +623,7 @@ function PecasList({ value, onChange, onTotalChange }) {
       </div>
       {itens.map((item, i) => (
         <div key={i} style={{ display:"grid", gridTemplateColumns:"22px 1fr 110px 24px", gap:8, alignItems:"center" }}>
-          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, textAlign:"right" }}>*</span>
+          <span style={{ color:"#e53e3e", fontWeight:700, fontSize:13, textAlign:"right" }}>{i + 1}.</span>
           <input
             className="pecas-nome"
             value={item.nome}
@@ -1329,33 +1337,16 @@ function AbaEquipe({ mecanicos, ordens }) {
             const hoje = new Date();
             const totalMes = osMec.filter(o => { const d=o.criadoEm?.toDate?o.criadoEm.toDate():new Date(o.criadoEm||0); return d.getMonth()===hoje.getMonth()&&d.getFullYear()===hoje.getFullYear(); });
             return (
-              <div key={m.id} style={{ background:"var(--cinza-escuro,#141414)", border:"1px solid var(--borda,#2a2a2a)", borderRadius:14, padding:"1.3rem", display:"flex", flexDirection:"column", gap:"1rem" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"1rem" }}>
-                  <div style={{ width:52, height:52, borderRadius:"50%", background:"#CC000022", border:"2px solid #CC0000", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.4rem", fontWeight:900, color:"#FF2020", flexShrink:0 }}>
-                    {m.nome.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:"1rem", color:"var(--texto,#f0f0f0)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.nome}</div>
-                    {m.especialidade && <div style={{ fontSize:".8rem", color:"#FF2020", fontWeight:600, marginTop:2 }}>{m.especialidade}</div>}
-                    {m.telefone && <div style={{ fontSize:".78rem", color:"var(--texto-sub,#888)", marginTop:2 }}>{m.telefone}</div>}
-                  </div>
+              <div key={m.id} className="mecanico-card">
+                <div className="mecanico-avatar">{m.nome.charAt(0).toUpperCase()}</div>
+                <div className="mecanico-info"><strong>{m.nome}</strong>{m.especialidade&&<span>{m.especialidade}</span>}{m.telefone&&<span>{m.telefone}</span>}</div>
+                <div className="mecanico-stats">
+                  <div><span className="stat-num">{osMec.length}</span><span>OS total</span></div>
+                  <div><span className="stat-num azul">{totalMes.length}</span><span>este mes</span></div>
+                  <div><span className="stat-num verde">{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span><span>faturado</span></div>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:".5rem", borderTop:"1px solid var(--borda,#2a2a2a)", paddingTop:".9rem" }}>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                    <span style={{ fontFamily:"monospace", fontSize:"1.3rem", fontWeight:700, color:"var(--texto,#f0f0f0)" }}>{osMec.length}</span>
-                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>OS total</span>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2, borderLeft:"1px solid var(--borda,#2a2a2a)", borderRight:"1px solid var(--borda,#2a2a2a)" }}>
-                    <span style={{ fontFamily:"monospace", fontSize:"1.3rem", fontWeight:700, color:"#3B82F6" }}>{totalMes.length}</span>
-                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>Este mes</span>
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-                    <span style={{ fontFamily:"monospace", fontSize:".9rem", fontWeight:700, color:"#10B981" }}>{formatarMoeda(osMec.reduce((a,o)=>a+(Number(o.valor)||0),0))}</span>
-                    <span style={{ fontSize:".68rem", color:"var(--texto-sub,#888)", textTransform:"uppercase" }}>Faturado</span>
-                  </div>
-                </div>
-                <div style={{ display:"flex", gap:".5rem", justifyContent:"flex-end", borderTop:"1px solid var(--borda,#2a2a2a)", paddingTop:".75rem" }}>
-                  <button className="btn-secondary btn-sm" onClick={()=>setModal(m)}>✏️ Editar</button>
+                <div className="tabela-acoes" style={{marginTop:".5rem"}}>
+                  <button className="btn-icon" onClick={()=>setModal(m)}>✏️</button>
                   <button className="btn-icon" onClick={()=>excluir(m.id)}>🗑️</button>
                 </div>
               </div>
