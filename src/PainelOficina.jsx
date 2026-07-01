@@ -341,20 +341,30 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const pecas = os.pecas
-      ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
-          return "   - " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
-        }).join("\n")
-      : null;
-    const msgPecas = pecas ? "\n*Pecas e servicos realizados:*\n" + pecas : "";
+    const hora = new Date().getHours();
+    const saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
+    const itens = [];
+    if (os.pecas) {
+      os.pecas.split("\n").filter(l => l.trim()).forEach(l => {
+        itens.push("   - " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim());
+      });
+    }
+    if (itens.length === 0) {
+      const servNome = nomeServico(os.servico);
+      if (servNome && servNome !== "Outros servicos") itens.push("   - " + servNome);
+      if (os.obs) os.obs.split("\n").filter(l => l.trim()).forEach(l => itens.push("   - " + l.trim()));
+    }
+    const msgItens = itens.length > 0 ? "\n\n*Servicos realizados:*\n" + itens.join("\n") : "";
     const msg =
-      "Ola, *" + os.cliente + "*!\n" +
-      "Seu veiculo *" + os.modelo + "* (" + os.placa + ") esta pronto para retirada!" +
-      msgPecas + "\n" +
-      "*Valor total: " + formatarMoeda(os.valor) + "*\n" +
+      saudacao + ", *" + os.cliente + "*!\n\n" +
+      "Temos uma otima noticia! Seu veiculo *" + os.modelo + "* de placa *" + os.placa + "* ja esta pronto e aguardando sua retirada." +
+      msgItens + "\n\n" +
+      "*Valor total: " + formatarMoeda(os.valor) + "*\n\n" +
+      "Estamos a sua disposicao para qualquer duvida.\n\n" +
       "*STOPCAR Oficina Mecanica*\n" +
       "Rua Dr. Joao Alberto Vilar Mamede, 710 - Cidade Alta\n" +
-      "Qualquer duvida estamos a disposicao! Aguardamos voce.";
+      "Horario: Seg a Sex 08h as 18h | Sab 08h as 12h\n\n" +
+      "Agradecemos a preferencia!";
     enviarWhatsApp(os.telefone, msg);
   }
 
