@@ -341,20 +341,7 @@ function AbaOS({ ordens, mecanicos, clientes }) {
   }
 
   function whatsappPronto(os) {
-    const pecas = os.pecas
-      ? os.pecas.split("\n").filter(l => l.trim()).map(l => {
-          return "   - " + l.replace(/^(\d+\s*[-.*]|\*)\s*/, "").trim();
-        }).join("\n")
-      : null;
-    const msgPecas = pecas ? "\n\n*Pecas e servicos realizados:*\n" + pecas : "";
-    const msg =
-      "Ola, *" + os.cliente + "*!\n\n" +
-      "Seu veiculo *" + os.modelo + "* (" + os.placa + ") esta pronto para retirada!" +
-      msgPecas + "\n\n" +
-      "*Valor total: " + formatarMoeda(os.valor) + "*\n\n" +
-      "*STOPCAR Oficina Mecanica*\n" +
-      "Rua Dr. Joao Alberto Vilar Mamede, 710 - Cidade Alta\n\n" +
-      "Qualquer duvida estamos a disposicao! Aguardamos voce.";
+    const msg = `Ola ${os.cliente}!\n\nSeu veiculo *${os.modelo}* (${os.placa}) esta pronto para retirada na STOPCAR.\n\nServico: ${nomeServico(os.servico)}\nValor: ${formatarMoeda(os.valor)}\n\nAguardamos voce!`;
     enviarWhatsApp(os.telefone, msg);
   }
 
@@ -900,32 +887,70 @@ function AbaHistorico({ ordens }) {
 function AbaFinanceiro({ financeiro, ordens }) {
   const [modal, setModal] = useState(false);
   const [filtroMes, setFiltroMes] = useState(() => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,"0")}`; });
+  const [filtroTipo, setFiltroTipo] = useState("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [abaFin, setAbaFin] = useState("lancamentos"); // lancamentos | historico
+  const [fechamentos, setFechamentos] = useState({});
+  const [modalFechamento, setModalFechamento] = useState(false);
+  const [historico, setHistorico] = useState([]);
+
   const toDate = ts => ts?.toDate ? ts.toDate() : ts ? new Date(ts) : new Date(0);
   const [anoF, mesF] = filtroMes.split("-").map(Number);
+
   const lancamentos = financeiro.filter(f => { const d = toDate(f.criadoEm); return d.getFullYear()===anoF && d.getMonth()+1===mesF; });
   const receitas = lancamentos.filter(f => f.tipo==="receita").reduce((a,f) => a+(Number(f.valor)||0), 0);
   const despesas = lancamentos.filter(f => f.tipo==="despesa").reduce((a,f) => a+(Number(f.valor)||0), 0);
   const osPagas = ordens.filter(o => { if(!o.pagamento||o.pagamento==="Pendente") return false; const d=toDate(o.criadoEm); return d.getFullYear()===anoF&&d.getMonth()+1===mesF; });
   const totalOS = osPagas.reduce((a,o) => a+(Number(o.valor)||0), 0);
   const pendentes = ordens.filter(o => o.pagamento==="Pendente"||o.pagamento==="Parcial");
-
   const saldo = receitas + totalOS - despesas;
-
-  const [fechamentos, setFechamentos] = useState({});
-  const [modalFechamento, setModalFechamento] = useState(false);
   const mesFechado = fechamentos[filtroMes];
 
+  // Carregar historico de fechamentos
+  useEffect(() => {
+    const q = collection(db, "fechamentos");
+    const unsub = onSnapshot(q, snap => {
+      const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      data.sort((a,b) => b.mes.localeCompare(a.mes));
+      setHistorico(data);
+      const map = {};
+      data.forEach(f => { map[f.mes] = f; });
+      setFechamentos(map);
+    });
+    return unsub;
+  }, []);
+
+  // Categorias unicas para filtro
+  const categorias = ["todas", ...Array.from(new Set(lancamentos.map(f => f.categoria).filter(Boolean)))];
+
+  // Lancamentos filtrados
+  const lancsFiltrados = lancamentos.filter(f => {
+    if (filtroTipo !== "todos" && f.tipo !== filtroTipo) return false;
+    if (filtroCategoria !== "todas" && f.categoria !== filtroCategoria) return false;
+    return true;
+  }).sort((a,b) => toDate(b.criadoEm) - toDate(a.criadoEm));
+
+  // Grafico ultimos 6 meses
+  const ultimos6 = Array.from({length:6}, (_,i) => {
+    const d = new Date(); d.setMonth(d.getMonth() - (5-i));
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    const label = d.toLocaleString("pt-BR",{month:"short"});
+    const lancsM = financeiro.filter(f => { const fd = toDate(f.criadoEm); return `${fd.getFullYear()}-${String(fd.getMonth()+1).padStart(2,"0")}` === key; });
+    const recM = lancsM.filter(f=>f.tipo==="receita").reduce((a,f)=>a+(Number(f.valor)||0),0);
+    const depM = lancsM.filter(f=>f.tipo==="despesa").reduce((a,f)=>a+(Number(f.valor)||0),0);
+    const osM = ordens.filter(o => { if(!o.pagamento||o.pagamento==="Pendente") return false; const fd=toDate(o.criadoEm); return `${fd.getFullYear()}-${String(fd.getMonth()+1).padStart(2,"0")}` === key; }).reduce((a,o)=>a+(Number(o.valor)||0),0);
+    return { label, key, receita: recM + osM, despesa: depM };
+  });
+  const maxGraf = Math.max(...ultimos6.map(m => Math.max(m.receita, m.despesa)), 1);
+
   async function fecharMes() {
-    if (!window.confirm(`Fechar o mês ${filtroMes.replace("-","/")}? Isso registra um resumo permanente.`)) return;
+    if (!window.confirm(`Fechar o mes ${filtroMes.replace("-","/")}? Isso registra um resumo permanente.`)) return;
     try {
       const nomeMes = new Date(anoF, mesF - 1, 1).toLocaleString("pt-BR", { month: "long", year: "numeric" });
-      const resumo = { mes: filtroMes, nomeMes, receitas, totalOS, despesas, saldo, totalOrdens: osPagas.length, totalLancamentos: lancamentos.length, fechadoEm: serverTimestamp() };
+      const resumo = { mes: filtroMes, nomeMes, receitas: receitas+totalOS, despesas, saldo, totalOrdens: osPagas.length, totalLancamentos: lancamentos.length, fechadoEm: serverTimestamp() };
       await addDoc(collection(db, "fechamentos"), resumo);
-      setFechamentos(f => ({ ...f, [filtroMes]: resumo }));
       setModalFechamento(true);
-    } catch(err) {
-      alert("Erro: " + err.message);
-    }
+    } catch(err) { alert("Erro: " + err.message); }
   }
 
   async function salvar(dados) {
@@ -933,128 +958,187 @@ function AbaFinanceiro({ financeiro, ordens }) {
     setModal(false);
   }
   async function excluir(id) {
-    if (!window.confirm("Excluir este lançamento?")) return;
-    try {
-      await deleteDoc(doc(db, "financeiro", id));
-    } catch (err) {
-      alert("Erro ao excluir: " + err.message);
-    }
+    if (!window.confirm("Excluir este lancamento?")) return;
+    try { await deleteDoc(doc(db, "financeiro", id)); }
+    catch (err) { alert("Erro ao excluir: " + err.message); }
   }
+
   const cards = [
-    { label: "Receitas", valor: formatarMoeda(receitas), icon: "📈", cor: "#48bb78" },
-    { label: "OS Pagas no Mês", valor: formatarMoeda(totalOS), icon: "✅", cor: "#38b2ac" },
-    { label: "Despesas", valor: formatarMoeda(despesas), icon: "📉", cor: "#e53e3e" },
-    { label: "Saldo do Mês", valor: formatarMoeda(saldo), icon: saldo >= 0 ? "🏆" : "⚠️", cor: saldo >= 0 ? "#48bb78" : "#e53e3e" },
+    { label: "Receitas", valor: formatarMoeda(receitas + totalOS), cor: "#48bb78" },
+    { label: "OS Pagas no Mes", valor: formatarMoeda(totalOS), cor: "#38b2ac" },
+    { label: "Despesas", valor: formatarMoeda(despesas), cor: "#e53e3e" },
+    { label: "Saldo do Mes", valor: formatarMoeda(saldo), cor: saldo >= 0 ? "#48bb78" : "#e53e3e" },
   ];
 
+  const btnTab = (aba, label) => (
+    <button onClick={() => setAbaFin(aba)} style={{ background: abaFin===aba ? "#CC0000" : "transparent", color: abaFin===aba ? "#fff" : "#888", border: abaFin===aba ? "none" : "1px solid #333", borderRadius:8, padding:"7px 16px", fontSize:13, fontWeight:600, cursor:"pointer", transition:"all .15s" }}>{label}</button>
+  );
+
   return (
-    <div style={{ padding: "24px", maxWidth: 1100, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ padding:"24px", maxWidth:1100, margin:"0 auto" }}>
 
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid #2a2a2a", paddingBottom:16, marginBottom:24, flexWrap:"wrap", gap:12 }}>
-        <div style={{ display:"flex", alignItems:"baseline", gap:12 }}>
+        <div>
           <h2 style={{ color:"#fff", fontSize:24, fontWeight:700, margin:0 }}>Financeiro</h2>
           <span style={{ color:"#888", fontSize:13 }}>Controle de receitas e despesas</span>
         </div>
-        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+        <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
           <input type="month" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}
             style={{ padding:"8px 12px", borderRadius:8, background:"#1a1a1a", border:"1px solid #333", color:"#fff", fontSize:13 }} />
-
           {mesFechado
-            ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600 }}>✅ Mês fechado</span>
-            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b55", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>🔒 Fechar Mês</button>
+            ? <span style={{ background:"#48bb7822", color:"#48bb78", border:"1px solid #48bb7844", borderRadius:8, padding:"7px 14px", fontSize:12, fontWeight:600 }}>Mes fechado</span>
+            : <button onClick={fecharMes} style={{ background:"#2a2a2a", color:"#ecc94b", border:"1px solid #ecc94b55", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:600, cursor:"pointer" }}>Fechar Mes</button>
           }
-          <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lançamento</button>
+          <button className="btn-primary btn-sm" onClick={() => setModal(true)}>+ Lancamento</button>
         </div>
       </div>
 
-
-
-      {mesFechado && (
-        <div style={{ background:"#48bb7811", border:"1px solid #48bb7833", borderRadius:10, padding:"12px 18px", marginBottom:20, display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontSize:20 }}>✅</span>
-            <div>
-              <div style={{ color:"#48bb78", fontWeight:700, fontSize:13 }}>Mês fechado — {mesFechado.nomeMes}</div>
-              <div style={{ color:"#888", fontSize:12, marginTop:2 }}>
-                Receitas: {formatarMoeda((mesFechado.receitas||0) + (mesFechado.totalOS||0))} &nbsp;·&nbsp;
-                Despesas: {formatarMoeda(mesFechado.despesas||0)} &nbsp;·&nbsp;
-                Saldo: <span style={{ color: (mesFechado.saldo||0) >= 0 ? "#48bb78" : "#fc8181", fontWeight:700 }}>{formatarMoeda(mesFechado.saldo||0)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {modalFechamento && (
-        <div className="modal-overlay" onClick={() => setModalFechamento(false)}>
-          <div className="modal" style={{ maxWidth:420, textAlign:"center" }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
-            <h3 style={{ color:"#fff", marginBottom:8 }}>Mês fechado com sucesso!</h3>
-            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Receitas: <strong style={{color:"#48bb78"}}>{formatarMoeda(receitas + totalOS)}</strong></p>
-            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Despesas: <strong style={{color:"#fc8181"}}>{formatarMoeda(despesas)}</strong></p>
-            <p style={{ color:"#888", fontSize:13, marginBottom:20 }}>Saldo: <strong style={{color: saldo >= 0 ? "#48bb78" : "#fc8181"}}>{formatarMoeda(saldo)}</strong></p>
-            <button className="btn-primary" onClick={() => setModalFechamento(false)}>Fechar</button>
-          </div>
-        </div>
-      )}
-
-      {/* Cards resumo */}
+      {/* Cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
-        {cards.map((c, i) => (
-          <div key={i} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", gap:14, position:"relative", overflow:"hidden" }}>
-            <div style={{ width:46, height:46, borderRadius:10, background:c.cor+"20", color:c.cor, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{c.icon}</div>
-            <div>
-              <div style={{ color:"#fff", fontSize:19, fontWeight:700, lineHeight:1.2 }}>{c.valor}</div>
-              <div style={{ color:"#888", fontSize:11, marginTop:2, textTransform:"uppercase", letterSpacing:"0.05em" }}>{c.label}</div>
-            </div>
-            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor, borderRadius:"0 0 12px 12px" }} />
+        {cards.map((c,i) => (
+          <div key={i} style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"18px 20px", position:"relative", overflow:"hidden" }}>
+            <div style={{ color:"#888", fontSize:11, textTransform:"uppercase", letterSpacing:".05em", marginBottom:6 }}>{c.label}</div>
+            <div style={{ color:c.cor, fontSize:22, fontWeight:700 }}>{c.valor}</div>
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:c.cor }} />
           </div>
         ))}
+      </div>
+
+      {/* Grafico ultimos 6 meses */}
+      <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:"20px 24px", marginBottom:20 }}>
+        <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", margin:"0 0 20px" }}>Ultimos 6 Meses</h3>
+        <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:120 }}>
+          {ultimos6.map((m,i) => (
+            <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, height:"100%" }}>
+              <div style={{ flex:1, display:"flex", alignItems:"flex-end", gap:3, width:"100%" }}>
+                <div title={"Receita: "+formatarMoeda(m.receita)} style={{ flex:1, background:"#48bb78", borderRadius:"4px 4px 0 0", height: Math.max(4, (m.receita/maxGraf)*100) + "%" }} />
+                <div title={"Despesa: "+formatarMoeda(m.despesa)} style={{ flex:1, background:"#e53e3e", borderRadius:"4px 4px 0 0", height: Math.max(4, (m.despesa/maxGraf)*100) + "%" }} />
+              </div>
+              <span style={{ color: m.key===filtroMes ? "#CC0000" : "#666", fontSize:11, fontWeight: m.key===filtroMes ? 700 : 400 }}>{m.label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:"flex", gap:16, marginTop:12 }}>
+          <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#888" }}><span style={{ width:10, height:10, background:"#48bb78", borderRadius:2, display:"inline-block" }} />Receitas</span>
+          <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"#888" }}><span style={{ width:10, height:10, background:"#e53e3e", borderRadius:2, display:"inline-block" }} />Despesas</span>
+        </div>
       </div>
 
       {/* Contas a receber */}
       {pendentes.length > 0 && (
         <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20, marginBottom:20 }}>
-          <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 14px 0" }}>💳 Contas a Receber</h3>
+          <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", margin:"0 0 14px" }}>Contas a Receber ({pendentes.length})</h3>
           {pendentes.map(os => (
             <div key={os.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
               <span style={{ background:"#e53e3e22", color:"#fc8181", border:"1px solid #e53e3e44", borderRadius:6, padding:"2px 8px", fontSize:12, fontWeight:700 }}>{os.placa}</span>
               <span style={{ flex:1, color:"#ddd", fontSize:13 }}>{os.cliente}</span>
-              <span style={{ background: os.pagamento==="Parcial" ? "#ecc94b22" : "#e53e3e22", color: os.pagamento==="Parcial" ? "#f6e05e" : "#fc8181", border:`1px solid ${os.pagamento==="Parcial"?"#ecc94b44":"#e53e3e44"}`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:600 }}>{os.pagamento}</span>
+              <span style={{ background: os.pagamento==="Parcial"?"#ecc94b22":"#e53e3e22", color: os.pagamento==="Parcial"?"#f6e05e":"#fc8181", border:`1px solid ${os.pagamento==="Parcial"?"#ecc94b44":"#e53e3e44"}`, borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:600 }}>{os.pagamento}</span>
               <span style={{ color:"#48bb78", fontWeight:700, fontSize:14 }}>{formatarMoeda(os.valor)}</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Lançamentos */}
-      <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 }}>
-        <h3 style={{ color:"#fff", fontSize:13, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"0 0 14px 0" }}>📋 Lançamentos do Mês</h3>
-        {lancamentos.length === 0
-          ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>Nenhum lançamento neste mês.</p>
-          : lancamentos.map(f => (
-            <div key={f.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", background:"#111", borderRadius:8, border:"1px solid #222", marginBottom:8 }}>
-              <div style={{ width:36, height:36, borderRadius:8, background: f.tipo==="receita" ? "#48bb7820" : "#e53e3e20", color: f.tipo==="receita" ? "#48bb78" : "#fc8181", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>
-                {f.tipo==="receita" ? "⬆️" : "⬇️"}
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ color:"#ddd", fontSize:13, fontWeight:600 }}>{f.descricao}</div>
-                <div style={{ color:"#666", fontSize:11, marginTop:2 }}>{f.categoria} · {formatarData(f.criadoEm)}</div>
-              </div>
-              <span style={{ color: f.tipo==="receita" ? "#48bb78" : "#fc8181", fontWeight:700, fontSize:15 }}>
-                {f.tipo==="receita" ? "+" : "-"}{formatarMoeda(f.valor)}
-              </span>
-              <button className="btn-icon" onClick={() => excluir(f.id)} style={{ marginLeft:4 }}>🗑️</button>
-            </div>
-          ))
-        }
+      {/* Abas: Lancamentos | Historico */}
+      <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+        {btnTab("lancamentos", "Lancamentos do Mes")}
+        {btnTab("historico", `Historico de Fechamentos (${historico.length})`)}
       </div>
+
+      {abaFin === "lancamentos" && (
+        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 }}>
+          {/* Filtros */}
+          <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", gap:8 }}>
+              {["todos","receita","despesa"].map(t => (
+                <button key={t} onClick={() => setFiltroTipo(t)} style={{ background: filtroTipo===t ? (t==="receita"?"#48bb7833":t==="despesa"?"#e53e3e33":"#333") : "transparent", color: filtroTipo===t ? (t==="receita"?"#48bb78":t==="despesa"?"#fc8181":"#fff") : "#666", border: `1px solid ${filtroTipo===t?(t==="receita"?"#48bb7855":t==="despesa"?"#e53e3e55":"#555"):"#333"}`, borderRadius:20, padding:"4px 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  {t==="todos"?"Todos":t==="receita"?"Receitas":"Despesas"}
+                </button>
+              ))}
+            </div>
+            {categorias.length > 1 && (
+              <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
+                style={{ background:"#111", border:"1px solid #333", color:"#aaa", borderRadius:8, padding:"5px 10px", fontSize:12 }}>
+                {categorias.map(c => <option key={c} value={c}>{c==="todas"?"Todas as categorias":c}</option>)}
+              </select>
+            )}
+          </div>
+
+          {lancsFiltrados.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>Nenhum lancamento encontrado.</p>
+            : lancsFiltrados.map(f => (
+              <div key={f.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"#111", borderRadius:8, border:`1px solid ${f.tipo==="receita"?"#48bb7822":"#e53e3e22"}`, marginBottom:8, transition:"border-color .15s" }}>
+                <div style={{ width:38, height:38, borderRadius:8, background: f.tipo==="receita"?"#48bb7820":"#e53e3e20", color: f.tipo==="receita"?"#48bb78":"#fc8181", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, fontWeight:700 }}>
+                  {f.tipo==="receita" ? "+" : "-"}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ color:"#ddd", fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.descricao}</div>
+                  <div style={{ color:"#555", fontSize:11, marginTop:3, display:"flex", gap:8 }}>
+                    {f.categoria && <span style={{ background:"#222", borderRadius:4, padding:"1px 6px" }}>{f.categoria}</span>}
+                    <span>{formatarData(f.criadoEm)}</span>
+                  </div>
+                </div>
+                <span style={{ color: f.tipo==="receita"?"#48bb78":"#fc8181", fontWeight:700, fontSize:15, whiteSpace:"nowrap" }}>
+                  {f.tipo==="receita" ? "+" : "-"}{formatarMoeda(f.valor)}
+                </span>
+                <button className="btn-icon" onClick={() => excluir(f.id)}>&#x1F5D1;</button>
+              </div>
+            ))
+          }
+          {lancamentos.length > 0 && (
+            <div style={{ borderTop:"1px solid #2a2a2a", marginTop:12, paddingTop:12, display:"flex", justifyContent:"space-between", fontSize:13, color:"#888" }}>
+              <span>{lancamentos.length} lancamento(s)</span>
+              <span>Saldo: <strong style={{ color: saldo>=0?"#48bb78":"#fc8181" }}>{formatarMoeda(saldo)}</strong></span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {abaFin === "historico" && (
+        <div style={{ background:"#1a1a1a", border:"1px solid #2a2a2a", borderRadius:12, padding:20 }}>
+          {historico.length === 0
+            ? <p style={{ color:"#555", fontSize:13, fontStyle:"italic", textAlign:"center", padding:"20px 0" }}>Nenhum mes fechado ainda.</p>
+            : historico.map((h,i) => (
+              <div key={h.id||i} style={{ display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:"#111", borderRadius:10, border:"1px solid #222", marginBottom:10 }}>
+                <div style={{ width:42, height:42, borderRadius:10, background:"#48bb7820", color:"#48bb78", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>&#x2714;</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ color:"#fff", fontWeight:700, fontSize:14, textTransform:"capitalize" }}>{h.nomeMes}</div>
+                  <div style={{ color:"#666", fontSize:12, marginTop:3, display:"flex", gap:12, flexWrap:"wrap" }}>
+                    <span>Receitas: <span style={{color:"#48bb78"}}>{formatarMoeda(h.receitas||0)}</span></span>
+                    <span>Despesas: <span style={{color:"#fc8181"}}>{formatarMoeda(h.despesas||0)}</span></span>
+                    <span>OS: {h.totalOrdens||0}</span>
+                    <span>Lancamentos: {h.totalLancamentos||0}</span>
+                  </div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ color: (h.saldo||0)>=0?"#48bb78":"#fc8181", fontWeight:700, fontSize:16 }}>{formatarMoeda(h.saldo||0)}</div>
+                  <div style={{ color:"#555", fontSize:11, marginTop:2 }}>Saldo</div>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      )}
+
+      {modalFechamento && (
+        <div className="modal-overlay" onClick={() => setModalFechamento(false)}>
+          <div className="modal" style={{ maxWidth:420, textAlign:"center" }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize:48, marginBottom:12 }}>&#x2705;</div>
+            <h3 style={{ color:"#fff", marginBottom:8 }}>Mes fechado com sucesso!</h3>
+            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Receitas: <strong style={{color:"#48bb78"}}>{formatarMoeda(receitas+totalOS)}</strong></p>
+            <p style={{ color:"#888", fontSize:13, marginBottom:4 }}>Despesas: <strong style={{color:"#fc8181"}}>{formatarMoeda(despesas)}</strong></p>
+            <p style={{ color:"#888", fontSize:13, marginBottom:20 }}>Saldo: <strong style={{color: saldo>=0?"#48bb78":"#fc8181"}}>{formatarMoeda(saldo)}</strong></p>
+            <button className="btn-primary" onClick={() => setModalFechamento(false)}>Fechar</button>
+          </div>
+        </div>
+      )}
 
       {modal && <ModalFinanceiro onSalvar={salvar} onFechar={() => setModal(false)} />}
     </div>
   );
 }
+
 
 function ModalFinanceiro({ onSalvar, onFechar }) {
   const [form, setForm] = useState({ tipo:"receita", descricao:"", categoria:"", valor:"" });
