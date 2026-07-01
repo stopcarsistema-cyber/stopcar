@@ -1180,7 +1180,9 @@ function AbaClientes({ clientes, ordens }) {
   const [modal, setModal] = useState(null);
   const [busca, setBusca] = useState("");
   const [sel, setSel] = useState(null);
-  const filtrados = clientes.filter(c => c.nome?.toLowerCase().includes(busca.toLowerCase()) || c.placa?.toLowerCase().includes(busca.toLowerCase()) || c.telefone?.includes(busca));
+  const filtrados = clientes
+    .filter(c => c.nome?.toLowerCase().includes(busca.toLowerCase()) || c.placa?.toLowerCase().includes(busca.toLowerCase()) || c.telefone?.includes(busca))
+    .sort((a, b) => (a.nome || "").localeCompare(b.nome || "", "pt-BR"));
 
   async function salvar(dados) {
     if (dados.id) await updateDoc(doc(db, "clientes", dados.id), dados);
@@ -1339,7 +1341,9 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
 
   function validarESalvar() {
     const novosErros = {};
+    const partesNome = form.nome.trim().split(/\s+/).filter(Boolean);
     if (!form.nome.trim()) novosErros.nome = "Nome obrigatorio";
+    else if (partesNome.length < 2) novosErros.nome = "Digite o nome completo (nome e sobrenome)";
     if (!form.telefone.trim()) novosErros.telefone = "Telefone obrigatorio";
     if (!form.cpf.trim()) novosErros.cpf = "CPF obrigatorio (use 000.000.000-00 se nao tiver)";
     if (Object.keys(novosErros).length > 0) { setErros(novosErros); return; }
