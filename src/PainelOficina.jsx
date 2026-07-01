@@ -1309,8 +1309,9 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
       ? dados.veiculos
       : [{ placa: dados?.placa || "", modelo: dados?.modelo || "", cor: dados?.cor || "", ano: dados?.ano || "" }]
   );
+  const [erros, setErros] = useState({});
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErros(e => ({ ...e, [k]: null })); }
 
   function setVeiculo(i, k, v) {
     setVeiculos(vs => vs.map((v2, idx) => idx === i ? { ...v2, [k]: v } : v2));
@@ -1328,9 +1329,28 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
     try {
       const res = await fetch(`https://viacep.com.br/ws/${nums}/json/`);
       const data = await res.json();
-      if (!data.erro) setForm(f => ({ ...f, endereco: data.logradouro || "", bairro: data.bairro || "", cidade: data.localidade || "" }));
+      if (!data.erro) setForm(f => ({ ...f,
+        endereco: (data.logradouro || "").toUpperCase(),
+        bairro: (data.bairro || "").toUpperCase(),
+        cidade: (data.localidade || "").toUpperCase()
+      }));
     } catch {}
   }
+
+  function validarESalvar() {
+    const novosErros = {};
+    if (!form.nome.trim()) novosErros.nome = "Nome obrigatorio";
+    if (!form.telefone.trim()) novosErros.telefone = "Telefone obrigatorio";
+    if (!form.cpf.trim()) novosErros.cpf = "CPF obrigatorio (use 000.000.000-00 se nao tiver)";
+    if (Object.keys(novosErros).length > 0) { setErros(novosErros); return; }
+    onSalvar({ ...form, veiculos, placa: veiculos[0]?.placa || "", modelo: veiculos[0]?.modelo || "", cor: veiculos[0]?.cor || "", ano: veiculos[0]?.ano || "" });
+  }
+
+  const inputStyle = (campo) => ({
+    borderColor: erros[campo] ? "#e53e3e" : undefined
+  });
+
+  const CPF_VAZIO = "000.000.000-00";
 
   return (
     <div className="modal-overlay" onClick={onFechar}>
@@ -1343,21 +1363,57 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
 
           <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:10 }}>👤 Dados Pessoais</p>
           <div className="form-grid">
-            <label className="span2">Nome completo<input value={form.nome} onChange={e=>set("nome",e.target.value)} placeholder="João da Silva" /></label>
-            <label>Telefone / WhatsApp<input value={form.telefone} onChange={e=>set("telefone",mascaraTelefone(e.target.value))} placeholder="(11) 99999-9999" /></label>
-            <label>E-mail<input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="email@exemplo.com" /></label>
-            <label>CPF<input value={form.cpf} onChange={e=>set("cpf",mascaraCPF(e.target.value))} placeholder="000.000.000-00" /></label>
-            <label>RG<input value={form.rg} onChange={e=>set("rg",mascaraRG(e.target.value))} placeholder="00.000.000-0" /></label>
-            <label>Data de Nascimento<input type="date" value={form.nascimento} onChange={e=>set("nascimento",e.target.value)} /></label>
+            <label className="span2">
+              Nome completo <span style={{color:"#e53e3e"}}>*</span>
+              <input
+                value={form.nome}
+                onChange={e => set("nome", e.target.value.toUpperCase())}
+                placeholder="JOAO DA SILVA"
+                style={inputStyle("nome")}
+              />
+              {erros.nome && <span style={{color:"#fc8181",fontSize:11}}>{erros.nome}</span>}
+            </label>
+            <label>
+              Telefone / WhatsApp <span style={{color:"#e53e3e"}}>*</span>
+              <input
+                value={form.telefone}
+                onChange={e => set("telefone", mascaraTelefone(e.target.value))}
+                placeholder="(11) 99999-9999"
+                style={inputStyle("telefone")}
+              />
+              {erros.telefone && <span style={{color:"#fc8181",fontSize:11}}>{erros.telefone}</span>}
+            </label>
+            <label>
+              E-mail
+              <input value={form.email} onChange={e => set("email", e.target.value.toUpperCase())} placeholder="EMAIL@EXEMPLO.COM" />
+            </label>
+            <label>
+              CPF <span style={{color:"#e53e3e"}}>*</span>
+              <div style={{display:"flex",gap:6}}>
+                <input
+                  value={form.cpf}
+                  onChange={e => set("cpf", mascaraCPF(e.target.value))}
+                  placeholder="000.000.000-00"
+                  style={{...inputStyle("cpf"), flex:1}}
+                />
+                <button type="button" onClick={() => set("cpf", CPF_VAZIO)}
+                  style={{background:"#2a2a2a",color:"#888",border:"1px solid #333",borderRadius:6,padding:"0 10px",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                  Sem CPF
+                </button>
+              </div>
+              {erros.cpf && <span style={{color:"#fc8181",fontSize:11}}>{erros.cpf}</span>}
+            </label>
+            <label>RG<input value={form.rg} onChange={e => set("rg", mascaraRG(e.target.value))} placeholder="00.000.000-0" /></label>
+            <label>Data de Nascimento<input type="date" value={form.nascimento} onChange={e => set("nascimento", e.target.value)} /></label>
           </div>
 
           <p style={{ color:"#e53e3e", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", margin:"16px 0 10px" }}>📍 Endereço</p>
           <div className="form-grid">
             <label>CEP<input value={form.cep} onChange={e=>{ const v=mascaraCEP(e.target.value); set("cep",v); buscarCEP(v); }} placeholder="00000-000" /></label>
-            <label className="span2">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value)} placeholder="Rua, avenida..." /></label>
-            <label>Número<input value={form.numero} onChange={e=>set("numero",e.target.value)} placeholder="123" /></label>
-            <label>Bairro<input value={form.bairro} onChange={e=>set("bairro",e.target.value)} placeholder="Bairro" /></label>
-            <label>Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value)} placeholder="Cidade" /></label>
+            <label className="span2">Endereço<input value={form.endereco} onChange={e=>set("endereco",e.target.value.toUpperCase())} placeholder="RUA, AVENIDA..." /></label>
+            <label>Número<input value={form.numero} onChange={e=>set("numero",e.target.value.toUpperCase())} placeholder="123" /></label>
+            <label>Bairro<input value={form.bairro} onChange={e=>set("bairro",e.target.value.toUpperCase())} placeholder="BAIRRO" /></label>
+            <label>Cidade<input value={form.cidade} onChange={e=>set("cidade",e.target.value.toUpperCase())} placeholder="CIDADE" /></label>
           </div>
 
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", margin:"16px 0 10px" }}>
@@ -1372,8 +1428,8 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
               <div style={{ color:"#888", fontSize:11, fontWeight:600, textTransform:"uppercase", marginBottom:10 }}>Veículo {i + 1}</div>
               <div className="form-grid">
                 <label>Placa<input value={v.placa} onChange={e=>setVeiculo(i,"placa",mascaraPlaca(e.target.value))} placeholder="ABC-1234 ou ABC1D23" maxLength={8} /></label>
-                <label>Modelo<input value={v.modelo} onChange={e=>setVeiculo(i,"modelo",e.target.value)} placeholder="Fiat Uno" /></label>
-                <label>Cor<input value={v.cor} onChange={e=>setVeiculo(i,"cor",e.target.value)} placeholder="Branco" /></label>
+                <label>Modelo<input value={v.modelo} onChange={e=>setVeiculo(i,"modelo",e.target.value.toUpperCase())} placeholder="FIAT UNO" /></label>
+                <label>Cor<input value={v.cor} onChange={e=>setVeiculo(i,"cor",e.target.value.toUpperCase())} placeholder="BRANCO" /></label>
                 <label>Ano<input value={v.ano} onChange={e=>setVeiculo(i,"ano",e.target.value)} placeholder="2020" maxLength={4} /></label>
                 <label>KM Atual<input value={v.km||""} onChange={e=>setVeiculo(i,"km",e.target.value)} placeholder="Ex: 85000" type="number" /></label>
               </div>
@@ -1381,13 +1437,17 @@ function ModalCliente({ dados, onSalvar, onFechar }) {
           ))}
 
           <div className="form-grid" style={{ marginTop: 16 }}>
-            <label className="span2">Observações<textarea value={form.obs} onChange={e=>set("obs",e.target.value)} rows={2} placeholder="Informações adicionais..." /></label>
+            <label className="span2">Observações<textarea value={form.obs} onChange={e=>set("obs",e.target.value.toUpperCase())} rows={2} placeholder="INFORMACOES ADICIONAIS..." /></label>
+          </div>
+
+          <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:8,padding:"10px 14px",marginTop:12}}>
+            <span style={{color:"#888",fontSize:11}}><span style={{color:"#e53e3e"}}>*</span> Campos obrigatórios &nbsp;&middot;&nbsp; Para clientes sem CPF, clique em <strong style={{color:"#aaa"}}>"Sem CPF"</strong> para preencher com 000.000.000-00</span>
           </div>
 
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onFechar}>Cancelar</button>
-          <button className="btn-primary" onClick={() => onSalvar({ ...form, veiculos, placa: veiculos[0]?.placa || "", modelo: veiculos[0]?.modelo || "", cor: veiculos[0]?.cor || "", ano: veiculos[0]?.ano || "" })}>Salvar</button>
+          <button className="btn-primary" onClick={validarESalvar}>Salvar</button>
         </div>
       </div>
     </div>
